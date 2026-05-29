@@ -1,0 +1,105 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
+import {
+  IconGrid,
+  IconInbox,
+  IconUsers,
+  IconShield,
+} from "@/components/ui/icons";
+
+const NAV = [
+  { href: "/", label: "핵심 포스트 노출판", icon: IconGrid, desc: "핵심 포스트 현황" },
+  {
+    href: "/external",
+    label: "외부 인재 파이프라인",
+    icon: IconInbox,
+    desc: "PDF 업로드·AI 매칭",
+  },
+  { href: "/talent", label: "내부 인재 풀", icon: IconUsers, desc: "직원 데이터" },
+];
+
+export function Sidebar() {
+  const pathname = usePathname();
+  return (
+    <aside className="fixed inset-y-0 left-0 z-30 flex w-[248px] flex-col border-r border-line bg-surface">
+      <div className="flex items-center gap-2.5 px-5 pb-4 pt-6">
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-700 text-sm font-bold text-white">
+          HR
+        </div>
+        <div className="leading-tight">
+          <div className="text-[15px] font-bold tracking-tight text-ink-900">
+            유통BG 인재 컨트롤타워
+          </div>
+          <div className="text-[11px] font-medium text-ink-400">
+            HR Intelligence Platform
+          </div>
+        </div>
+      </div>
+
+      <nav className="flex-1 px-3 pt-2">
+        <div className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-400">
+          운영
+        </div>
+        <ul className="space-y-1">
+          {NAV.map((item) => {
+            const active =
+              item.href === "/"
+                ? pathname === "/"
+                : pathname.startsWith(item.href);
+            const Icon = item.icon;
+            return (
+              <li key={item.href}>
+                <Link
+                  href={item.href}
+                  className={cn(
+                    "group flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors",
+                    active
+                      ? "bg-brand-50 text-brand-700"
+                      : "text-ink-700 hover:bg-canvas"
+                  )}
+                >
+                  <Icon
+                    className={cn(
+                      "h-[18px] w-[18px] shrink-0",
+                      active ? "text-brand-700" : "text-ink-400"
+                    )}
+                  />
+                  <span className="flex flex-col leading-tight">
+                    <span className="text-[13.5px] font-semibold">
+                      {item.label}
+                    </span>
+                    <span
+                      className={cn(
+                        "text-[11px]",
+                        active ? "text-brand-500" : "text-ink-400"
+                      )}
+                    >
+                      {item.desc}
+                    </span>
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
+
+      <div className="px-4 pb-5">
+        <div className="flex items-start gap-2.5 rounded-xl border border-line bg-canvas px-3.5 py-3">
+          <IconShield className="mt-0.5 h-4 w-4 shrink-0 text-signal-blue" />
+          <div className="leading-snug">
+            <div className="text-[12px] font-semibold text-ink-700">
+              시연 모드 · 샘플 데이터
+            </div>
+            <div className="mt-0.5 text-[11px] text-ink-400">
+              실명·민감정보 미포함. 제안서 캡처 가능.
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  );
+}

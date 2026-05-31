@@ -139,7 +139,6 @@ export function PricingClient() {
               style={selected === plan.version ? {
                 backgroundColor: `#${plan.bg.replace("bg-", "")}`,
                 borderColor: `#${plan.color}40`,
-                ringColor: `#${plan.color}`,
               } : {}}
             >
               {/* 버전 배지 */}

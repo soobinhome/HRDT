@@ -20,13 +20,6 @@ interface OrgStat {
   tag: string; // 핵심 과업 태그
 }
 
-function colorToRisk(c: PostColor): number {
-  if (c === "red") return 0;
-  if (c === "yellow") return 50;
-  if (c === "blue" || c === "green") return 100;
-  return 0;
-}
-
 function computeOrgStats(matrix: PostRow[]): OrgStat[] {
   return matrix.map((row) => {
     const allCells = [row.current, ...row.successors, ...row.wings];

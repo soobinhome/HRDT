@@ -10,6 +10,8 @@ import {
   IconShield,
   IconBarChart,
   IconSimulator,
+  IconBuilding,
+  IconStar,
 } from "@/components/ui/icons";
 
 const NAV = [
@@ -34,7 +36,21 @@ const NAV = [
     label: "인재 교체 시뮬레이터",
     icon: IconSimulator,
     desc: "교체 시 비즈니스 영향 예측",
+    badge: "v3.0",
+  },
+  {
+    href: "/b2b",
+    label: "B2B SaaS 미리보기",
+    icon: IconBuilding,
+    desc: "외부 기업 도입 시나리오",
     badge: "v4.0",
+  },
+  {
+    href: "/pricing",
+    label: "요금제",
+    icon: IconStar,
+    desc: "버전별 가격·권한 플랜",
+    badge: null,
   },
 ];
 

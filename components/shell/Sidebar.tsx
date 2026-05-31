@@ -8,17 +8,34 @@ import {
   IconInbox,
   IconUsers,
   IconShield,
+  IconBarChart,
+  IconSimulator,
 } from "@/components/ui/icons";
 
 const NAV = [
-  { href: "/", label: "핵심 포스트 노출판", icon: IconGrid, desc: "핵심 포스트 현황" },
+  { href: "/", label: "핵심 포스트 노출판", icon: IconGrid, desc: "핵심 포스트 현황", badge: null },
   {
     href: "/external",
     label: "외부 인재 파이프라인",
     icon: IconInbox,
     desc: "PDF 업로드·AI 매칭",
+    badge: null,
   },
-  { href: "/talent", label: "내부 인재 풀", icon: IconUsers, desc: "직원 데이터" },
+  { href: "/talent", label: "내부 인재 풀", icon: IconUsers, desc: "직원 데이터", badge: null },
+  {
+    href: "/executive",
+    label: "경영진 대시보드",
+    icon: IconBarChart,
+    desc: "조직 건강도·승계 준비율",
+    badge: "v2.0",
+  },
+  {
+    href: "/simulator",
+    label: "인재 교체 시뮬레이터",
+    icon: IconSimulator,
+    desc: "교체 시 비즈니스 영향 예측",
+    badge: "v4.0",
+  },
 ];
 
 export function Sidebar() {
@@ -67,9 +84,16 @@ export function Sidebar() {
                       active ? "text-brand-700" : "text-ink-400"
                     )}
                   />
-                  <span className="flex flex-col leading-tight">
-                    <span className="text-[13.5px] font-semibold">
-                      {item.label}
+                  <span className="flex flex-col leading-tight min-w-0 flex-1">
+                    <span className="flex items-center gap-1.5">
+                      <span className="text-[13.5px] font-semibold truncate">
+                        {item.label}
+                      </span>
+                      {item.badge && (
+                        <span className="shrink-0 rounded-md bg-brand-700 px-1 py-0.5 text-[9px] font-bold text-white leading-none">
+                          {item.badge}
+                        </span>
+                      )}
                     </span>
                     <span
                       className={cn(

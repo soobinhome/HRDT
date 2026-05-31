@@ -137,3 +137,19 @@ export const IconBolt = (p: P) => (
     <path d="M13 3L4 14h7l-1 7 9-11h-7z" />
   </svg>
 );
+
+export const IconBarChart = (p: P) => (
+  <svg {...base} {...p}>
+    <rect x="3" y="10" width="4" height="11" rx="1" />
+    <rect x="10" y="6" width="4" height="15" rx="1" />
+    <rect x="17" y="3" width="4" height="18" rx="1" />
+  </svg>
+);
+
+export const IconSimulator = (p: P) => (
+  <svg {...base} {...p}>
+    <circle cx="12" cy="12" r="3" />
+    <path d="M12 3v3M12 18v3M3 12h3M18 12h3" />
+    <path d="M7.8 7.8l-2-2M18.2 18.2l-2-2M18.2 7.8l-2 2M7.8 18.2l-2 2" />
+  </svg>
+);

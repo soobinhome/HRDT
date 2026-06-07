@@ -5,119 +5,151 @@ import { Radar } from "@/components/ui/dataviz";
 import { metricToScore } from "@/lib/scoring";
 import { CandidateInternal, METRIC_KEYS, EvalGrade } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { IconCheck, IconShield } from "@/components/ui/icons";
+import { IconCheck, IconWarn, IconSpark } from "@/components/ui/icons";
+import { attritionRisk } from "./TalentClient";
 
+// ── 상수 ──────────────────────────────────────
 const EVAL_TONE: Record<EvalGrade, string> = {
   HP: "bg-signal-greenBg text-signal-green",
   SP: "bg-signal-blueBg text-signal-blue",
   IP: "bg-canvas text-ink-500",
-  A: "bg-signal-amberBg text-signal-amber",
-  C: "bg-signal-redBg text-signal-red",
-  "-": "bg-canvas text-ink-400",
+  A:  "bg-signal-amberBg text-signal-amber",
+  C:  "bg-signal-redBg text-signal-red",
+  "-":"bg-canvas text-ink-400",
 };
 
 const DISC_LABEL: Record<string, string> = {
-  D: "주도형",
-  I: "사교형",
-  S: "안정형",
-  C: "신중형",
+  D: "주도형", I: "사교형", S: "안정형", C: "신중형",
 };
 
+const COM_LABEL: Record<string, string> = {
+  AC: "Action — 실행·추진",
+  PR: "Process — 체계·관리",
+  PE: "People — 관계·조화",
+  ID: "Idea — 창의·혁신",
+};
+
+const METRIC_SYMBOL: Record<string, string> = {
+  "◎": "text-signal-green", "○": "text-brand-700",
+  "△": "text-signal-amber", "X": "text-signal-red", "-": "text-ink-300",
+};
+
+function emoneyColor(v: number) {
+  if (v >= 1)  return { chip: "bg-signal-greenBg text-signal-green", label: "우수" };
+  if (v >= 0)  return { chip: "bg-canvas text-ink-500",              label: "보통" };
+  return                { chip: "bg-signal-redBg text-signal-red",    label: "주의" };
+}
+
+// ── 메인 컴포넌트 ──────────────────────────────
 export function EmployeeDetail({
-  emp,
-  onClose,
+  emp, onClose,
 }: {
   emp: CandidateInternal | null;
   onClose: () => void;
 }) {
   return (
-    <Drawer open={Boolean(emp)} onClose={onClose} width={720}>
+    <Drawer open={Boolean(emp)} onClose={onClose} width={800}>
       {emp && <Body emp={emp} onClose={onClose} />}
     </Drawer>
   );
 }
 
-function Body({
-  emp,
-  onClose,
-}: {
-  emp: CandidateInternal;
-  onClose: () => void;
-}) {
-  const radarData = METRIC_KEYS.map((k) => ({
-    label: k,
-    value: metricToScore(emp.metrics[k]),
-  }));
-
-  const badges = [
-    emp.ebgPass === "O" && "EBG 통과",
-    emp.managerClass && "경영자반",
-    emp.sproutClass && "새싹반",
-    emp.groundExp && "밑바닥경험",
-  ].filter(Boolean) as string[];
-
-  const discMax = Math.max(...Object.values(emp.discScores));
+function Body({ emp, onClose }: { emp: CandidateInternal; onClose: () => void }) {
+  const radarData   = METRIC_KEYS.map((k) => ({ label: k, value: metricToScore(emp.metrics[k]) }));
+  const discMax     = Math.max(...Object.values(emp.discScores));
+  const comMax      = emp.comStyle ? Math.max(...Object.values(emp.comStyle)) : 0;
+  const risk        = attritionRisk(emp);
+  const emoney      = emp.emoney ?? 0;
+  const emoneyStyle = emoneyColor(emoney);
 
   return (
     <>
       <DrawerHeader
         title={emp.name}
-        subtitle={`${emp.grade} · ${emp.orgName} · ${emp.age}세`}
+        subtitle={`${emp.grade} · ${emp.orgName} · ${emp.workLocation || ""}`}
         onClose={onClose}
-        badge={
-          <span className={cn("chip", EVAL_TONE[emp.avgEval])}>
-            평가 {emp.avgEval}
-          </span>
-        }
+        badge={<span className={cn("chip", EVAL_TONE[emp.avgEval])}>평가 {emp.avgEval}</span>}
       />
 
       <div className="flex-1 space-y-5 overflow-y-auto px-6 py-5">
-        {/* 요약 */}
+
+        {/* ── 기본 정보 카드 ── */}
+        <div className="card p-4">
+          <div className="mb-3 text-[13px] font-bold text-ink-900">기본 정보</div>
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { label: "조직구분",    value: emp.orgGroup    || "-" },
+              { label: "조직명",      value: emp.orgName     || "-" },
+              { label: "본사/현장",   value: emp.workLocation|| "-" },
+              { label: "직급",        value: emp.grade       || "-" },
+              { label: "최종 승진",   value: emp.lastPromotion ? emp.lastPromotion.slice(0, 7) : "-" },
+              { label: "현 직위 체류", value: `${emp.gradeYears}년` },
+            ].map(({ label, value }) => (
+              <div key={label} className="rounded-xl bg-canvas px-3 py-2.5">
+                <div className="text-[10.5px] text-ink-400 mb-0.5">{label}</div>
+                <div className="text-[13px] font-semibold text-ink-900">{value}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── 뱃지 행 ── */}
         <div className="flex flex-wrap gap-2">
+          {/* E머니 */}
+          <span className={cn("chip font-bold", emoneyStyle.chip)}>
+            E머니 {emoney > 0 ? "+" : ""}{emoney} · {emoneyStyle.label}
+          </span>
+
+          {/* DISC */}
           <span className="chip bg-brand-50 text-brand-700">
             {emp.disc}형 · {DISC_LABEL[emp.disc]}
           </span>
+
+          {/* MBTI */}
           <span className="chip bg-canvas text-ink-500">{emp.mbti}</span>
+
+          {/* 언어/수리 */}
           <span className="chip bg-canvas text-ink-500">언어 {emp.lang}</span>
           <span className="chip bg-canvas text-ink-500">수리 {emp.math}</span>
-          {badges.map((b) => (
-            <span
-              key={b}
-              className="chip bg-signal-blueBg text-signal-blue"
-            >
-              <IconShield className="h-3 w-3" /> {b}
+
+          {/* 이탈 위험 */}
+          {risk === "승진적체" && (
+            <span className="chip bg-signal-amberBg text-signal-amber">
+              <IconWarn className="h-3 w-3" /> 승진적체 주의
             </span>
-          ))}
+          )}
+          {risk === "평가하락" && (
+            <span className="chip bg-signal-redBg text-signal-red">
+              <IconWarn className="h-3 w-3" /> 평가하락 위험
+            </span>
+          )}
+
+          {/* 표식 */}
+          {emp.ebgPass === "O" && <span className="chip bg-signal-greenBg text-signal-green"><IconCheck className="h-3 w-3" /> EBG 통과</span>}
+          {emp.managerClass   && <span className="chip bg-signal-amberBg text-signal-amber">경영자반</span>}
+          {emp.sproutClass    && <span className="chip bg-canvas text-ink-500">새싹반</span>}
+          {emp.groundExp      && <span className="chip bg-canvas text-ink-500">밑바닥 경험</span>}
         </div>
 
-        {/* 역량 레이더 + DISC */}
-        <div className="grid grid-cols-[1fr_240px] gap-4">
+        {/* ── 역량 레이더 + DISC ── */}
+        <div className="grid grid-cols-[1fr_220px] gap-4">
           <div className="card flex flex-col items-center p-4">
-            <div className="self-start text-[13px] font-bold text-ink-900">
-              핵심 역량 프로필
-            </div>
-            <Radar data={radarData} size={220} />
+            <div className="self-start text-[13px] font-bold text-ink-900 mb-1">핵심 역량 프로필</div>
+            <Radar data={radarData} size={210} />
           </div>
           <div className="card space-y-3 p-4">
             <div className="text-[13px] font-bold text-ink-900">DISC 성향</div>
-            {(["D", "I", "S", "C"] as const).map((d) => {
-              const v = emp.discScores[d];
+            {(["D","I","S","C"] as const).map((d) => {
+              const val = emp.discScores[d];
               return (
                 <div key={d}>
-                  <div className="mb-1 flex items-center justify-between text-[12px]">
-                    <span className="font-medium text-ink-700">
-                      {d} · {DISC_LABEL[d]}
-                    </span>
-                    <span className="font-semibold text-ink-900">{v}</span>
+                  <div className="mb-1 flex justify-between text-[11.5px]">
+                    <span className="text-ink-700">{d} · {DISC_LABEL[d]}</span>
+                    <span className="font-semibold">{val}</span>
                   </div>
                   <div className="h-1.5 w-full overflow-hidden rounded-full bg-canvas">
-                    <div
-                      className={cn(
-                        "h-full rounded-full",
-                        v === discMax ? "bg-brand-700" : "bg-ink-300"
-                      )}
-                      style={{ width: `${(v / 10) * 100}%` }}
-                    />
+                    <div className={cn("h-full rounded-full", val === discMax ? "bg-brand-700" : "bg-ink-200")}
+                      style={{ width: `${(val / 14) * 100}%` }} />
                   </div>
                 </div>
               );
@@ -125,68 +157,107 @@ function Body({
           </div>
         </div>
 
-        {/* 역량 지표 표 */}
+        {/* ── 정성 역량 지표 ── */}
         <div className="card p-4">
-          <div className="mb-3 text-[13px] font-bold text-ink-900">
-            정성 역량 지표
-          </div>
-          <div className="grid grid-cols-3 gap-2.5">
-            {METRIC_KEYS.map((k) => (
-              <div
-                key={k}
-                className="flex items-center justify-between rounded-xl bg-canvas px-3 py-2"
-              >
-                <span className="text-[12.5px] text-ink-700">{k}</span>
-                <span className="text-[15px] font-bold text-ink-900">
-                  {emp.metrics[k]}
-                </span>
-              </div>
-            ))}
+          <div className="mb-3 text-[13px] font-bold text-ink-900">정성 역량 지표</div>
+          <div className="grid grid-cols-3 gap-2">
+            {METRIC_KEYS.map((k) => {
+              const m = emp.metrics[k];
+              return (
+                <div key={k} className="flex items-center justify-between rounded-xl bg-canvas px-3 py-2">
+                  <span className="text-[12px] text-ink-700">{k}</span>
+                  <span className={cn("text-[16px] font-bold", METRIC_SYMBOL[m] || "text-ink-400")}>{m}</span>
+                </div>
+              );
+            })}
           </div>
         </div>
 
-        {/* 강점 + 직무 */}
+        {/* ── 컴스타일 ── */}
+        {emp.comStyle && (
+          <div className="card p-4">
+            <div className="mb-3 text-[13px] font-bold text-ink-900">컴스타일 (AC·PR·PE·ID)</div>
+            <div className="space-y-2.5">
+              {(["AC","PR","PE","ID"] as const).map((k) => {
+                const val = emp.comStyle![k];
+                const isDom = val === comMax;
+                return (
+                  <div key={k}>
+                    <div className="mb-1 flex justify-between text-[11.5px]">
+                      <span className={cn("font-medium", isDom ? "text-brand-700" : "text-ink-700")}>
+                        {isDom && "★ "}{k} · {COM_LABEL[k]}
+                      </span>
+                      <span className={cn("font-bold", isDom ? "text-brand-700" : "text-ink-500")}>{val}</span>
+                    </div>
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-canvas">
+                      <div className={cn("h-full rounded-full", isDom ? "bg-brand-700" : "bg-ink-200")}
+                        style={{ width: `${(val / 20) * 100}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ── 강점 + 강점 유형 ── */}
         <div className="grid grid-cols-2 gap-4">
           <div className="card p-4">
-            <div className="mb-2.5 text-[13px] font-bold text-ink-900">
-              갤럽 강점
-            </div>
+            <div className="mb-2.5 text-[13px] font-bold text-ink-900">갤럽 강점 Top 5</div>
             <ul className="space-y-2">
               {emp.strengths.map((s, i) => (
-                <li
-                  key={s}
-                  className="flex items-center gap-2 text-[12.5px] text-ink-700"
-                >
+                <li key={s} className="flex items-center gap-2 text-[12.5px] text-ink-700">
                   <span className="flex h-5 w-5 items-center justify-center rounded-md bg-brand-50 text-[11px] font-bold text-brand-700">
                     {i + 1}
                   </span>
                   {s}
                 </li>
               ))}
+              {!emp.strengths.length && <li className="text-[12px] text-ink-400">데이터 없음</li>}
             </ul>
           </div>
-          <div className="card p-4">
-            <div className="mb-2.5 text-[13px] font-bold text-ink-900">
-              직무 경험
+
+          {/* 강점 유형 — 판별 기준 입력 후 활성화 */}
+          <div className="card p-4 border-dashed">
+            <div className="mb-2 flex items-center gap-1.5">
+              <IconSpark className="h-4 w-4 text-brand-700" />
+              <div className="text-[13px] font-bold text-ink-900">강점 유형</div>
+              <span className="chip bg-brand-50 text-brand-700 text-[10px]">업데이트 예정</span>
             </div>
-            <div className="flex flex-wrap gap-1.5">
-              {emp.job.map((j) => (
-                <span
-                  key={j}
-                  className="chip bg-canvas text-ink-700"
-                >
-                  <IconCheck className="h-3 w-3 text-signal-green" />
-                  {j}
-                </span>
+            <p className="text-[12px] text-ink-400 leading-relaxed">
+              강점 유형 판별 기준이 확정되면 자동으로 유형을 분류합니다.
+              예: 전략형 / 실행형 / 관계형 / 분석형 등
+            </p>
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {emp.strengths.slice(0, 3).map(s => (
+                <span key={s} className="rounded-lg bg-brand-50 px-2 py-1 text-[11px] text-brand-600">{s}</span>
               ))}
             </div>
           </div>
         </div>
 
-        <p className="pb-2 text-center text-[11px] text-ink-400">
-          전원 가상 인물 · 시연용 샘플 데이터입니다. 실명·민감 인사정보는
-          포함되지 않습니다.
-        </p>
+        {/* ── 이탈 위험 분석 ── */}
+        {risk && (
+          <div className={cn("rounded-2xl p-4", risk === "승진적체" ? "bg-signal-amberBg" : "bg-signal-redBg")}>
+            <div className={cn("flex items-center gap-2 mb-2 text-[13px] font-bold",
+              risk === "승진적체" ? "text-signal-amber" : "text-signal-red")}>
+              <IconWarn className="h-4 w-4" />
+              이탈 위험 감지 — {risk}
+            </div>
+            {risk === "승진적체" && (
+              <p className="text-[12px] text-ink-700">
+                현 직위 체류 <strong>{emp.gradeYears}년</strong>으로 {emp.gradeGroup} 평균 기준 초과.
+                승진 기회 제공 또는 역할 재설계 검토가 필요합니다.
+              </p>
+            )}
+            {risk === "평가하락" && (
+              <p className="text-[12px] text-ink-700">
+                최근 평가 등급 <strong>C</strong>. 성과 원인 파악 및 1:1 코칭·업무 재배치 검토를 권장합니다.
+              </p>
+            )}
+          </div>
+        )}
+
       </div>
     </>
   );

@@ -40,27 +40,58 @@ export interface PostRow {
   wings: PostCell[]; // 5개 날개과업
 }
 
+// ── 컴스타일 (Action·Process·People·Idea) ────
+export interface ComStyle {
+  AC: number; // Action   — 실행·추진
+  PR: number; // Process  — 체계·관리
+  PE: number; // People   — 관계·조화
+  ID: number; // Idea     — 창의·혁신
+}
+
+// ── 이탈 위험 신호 유형 ────────────────────────
+export type AttritionRisk = "평가하락" | "승진적체" | "없음";
+
 // ── 내부 인재 ─────────────────────────────────
 export interface CandidateInternal {
   id: string;
   name: string;
-  grade: string; // 레벨직위명 (예: 과장)
+
+  // 기본 정보
+  orgGroup: string;   // 조직구분 (유통BG, 의류BG 등)
+  orgName: string;    // 조직명
+  grade: string;      // 레벨직위명 (예: 과장)
   gradeGroup: string; // 사원급/대리급/과장급/차장급/부장급/임원
+  workLocation: string; // 본사/현장 구분
+  lastPromotion: string; // 최종 승진 시점 (예: "2023-03-01")
+  gradeYears: number;   // 현 직위 체류년수
+
+  // 레거시 (기존 호환)
   age: number;
-  orgName: string;
-  lang: number; // 언 1~10
-  math: number; // 수 1~10
-  metrics: Record<MetricKey, Metric>;
+
+  // 역량 프로파일
+  lang: number;   // 언어 1~10
+  math: number;   // 수리 1~10
+  metrics: Record<MetricKey, Metric>; // 열정·집요함·전략·시스템사고·팀워크·리더십
+  comStyle: ComStyle; // 컴스타일 AC·PR·PE·ID
   disc: DiscType;
   discScores: { D: number; I: number; S: number; C: number };
   mbti: string;
   strengths: string[]; // 갤럽 강점 최대 5개
-  job: string[]; // 직무 태그
-  avgEval: EvalGrade; // 3개년 평균종합평가
+
+  // 직무 & 평가
+  job: string[];        // 직무 태그
+  avgEval: EvalGrade;  // 3개년 평균종합평가
   ebgPass: OX;
   managerClass: boolean; // 경영자반
-  sproutClass: boolean; // 새싹반
-  groundExp: boolean; // 밑바닥경험
+  sproutClass: boolean;  // 새싹반
+  groundExp: boolean;    // 밑바닥경험
+
+  // 추가 정보
+  emoney?: number;      // E머니 배수
+  status?: string;      // 재직자 / 휴직자
+
+  // 이탈 위험 (자동 계산)
+  attritionRisk?: AttritionRisk;
 }
 
 // ── 과업 프로파일 (taskProfiles V8.0) ─────────

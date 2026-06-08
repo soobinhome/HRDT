@@ -274,7 +274,7 @@ export function TalentClient() {
         </div>
       </div>
 
-      <EmployeeDetail emp={selected} onClose={() => setSelected(null)} />
+      <EmployeeDetail emp={selected} onClose={() => setSelected(null)} pool={SAMPLE_EMPLOYEES} />
     </>
   );
 }

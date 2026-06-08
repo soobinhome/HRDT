@@ -310,6 +310,73 @@ export function classifyPerformanceType(
   return null;
 }
 
+// ── 성과 유형 판정 근거 ──────────────────────────
+export interface PerformanceTypeBasis {
+  matchedStrengths: string[];
+  comStyleBasis: string | null;
+  comStyleScore: number | null;
+  mbtiBasis: string[];
+  discBasis: string;
+  discScore: number;
+}
+
+export function getPerformanceTypeBasis(
+  emp: CandidateInternal,
+  ptype: PerformanceType,
+): PerformanceTypeBasis {
+  const { mbti = "", disc, discScores, strengths = [], comStyle } = emp;
+
+  const COM_LABEL: Record<string, string> = {
+    AC: "AC(분석·논리)", PR: "PR(표현·관계)", PE: "PE(안정·공감)", ID: "ID(주도·결정)",
+  };
+  const DISC_LABEL: Record<string, string> = {
+    D: "D형·주도형", I: "I형·사교형", S: "S형·안정형", C: "C형·신중형",
+  };
+
+  let comDomKey: string | null = null;
+  let comDomScore: number | null = null;
+  if (comStyle) {
+    const max = Math.max(comStyle.AC, comStyle.PR, comStyle.PE, comStyle.ID);
+    const entry = (Object.entries(comStyle) as [string, number][]).find(([, v]) => v === max);
+    if (entry && max > 0) { comDomKey = entry[0]; comDomScore = entry[1]; }
+  }
+
+  const strMatch = (targets: string[]) =>
+    strengths.filter(s => targets.some(t => s.includes(t) || t.includes(s)));
+
+  let matchedStrengths: string[] = [];
+  let mbtiBasis: string[] = [];
+
+  if (ptype === "고성과 유형") {
+    matchedStrengths = strMatch(["성취욕","성취","최상주의자","최상화","승부","집중","책임","행동","존재감","경쟁","자기확신"]);
+    if (mbti[0] === "E") mbtiBasis.push("외향(E)");
+    if (mbti[2] === "T") mbtiBasis.push("사고(T)");
+    if (mbti[3] === "J") mbtiBasis.push("계획(J)");
+  } else if (ptype === "프로세스형") {
+    matchedStrengths = strMatch(["분석","체계","심사숙고","복구","정리","집중","회고","공정성","신중","책임"]);
+    if (mbti[1] === "S") mbtiBasis.push("현실(S)");
+    if (mbti[2] === "T") mbtiBasis.push("논리(T)");
+    if (mbti[3] === "J") mbtiBasis.push("계획(J)");
+  } else if (ptype === "전략형") {
+    matchedStrengths = strMatch(["전략","발상","미래지향","지적사고","수집","맥락","배움","분석"]);
+    if (mbti[1] === "N") mbtiBasis.push("직관(N)");
+    if (mbti[2] === "T") mbtiBasis.push("논리(T)");
+  } else if (ptype === "피플형") {
+    matchedStrengths = strMatch(["개발","절친","사교성","개별화","매력","공감","화합","긍정"]);
+    if (mbti[2] === "F") mbtiBasis.push("감정(F)");
+    if (mbti[0] === "E") mbtiBasis.push("외향(E)");
+  }
+
+  return {
+    matchedStrengths,
+    comStyleBasis: comDomKey ? COM_LABEL[comDomKey] : null,
+    comStyleScore: comDomScore,
+    mbtiBasis,
+    discBasis: DISC_LABEL[disc] ?? disc,
+    discScore: discScores[disc] ?? 0,
+  };
+}
+
 // 외부 인재용 간이 적합도 (파싱 키워드 기반)
 export function scoreExternalFit(
   fitKeywords: string[],

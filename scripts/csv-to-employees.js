@@ -27,7 +27,7 @@ const C = {
   STR1: 43, STR2: 44, STR3: 45, STR4: 46, STR5: 47,
   JOB_DOMAIN: 48, BOTTOM_EXP: 49,
   EBG_PASS: 52, AVG_EVAL: 53,
-  MGR_CLASS: 54, SPROUT_CLASS: 55,
+  MGR_CLASS: 54, SPROUT_CLASS: 55, ESI_CLASS: 56,
 };
 
 // ── 학교 티어 매핑 ─────────────────────────────
@@ -167,6 +167,7 @@ const employees = dataLines
       ebgPass:     ox3(v(cols, C.EBG_PASS)),
       managerClass:v(cols, C.MGR_CLASS) === "O",
       sproutClass: v(cols, C.SPROUT_CLASS) === "O",
+      esiClass:    v(cols, C.ESI_CLASS) === "O",
       groundExp:   v(cols, C.BOTTOM_EXP) === "O",
     };
   })

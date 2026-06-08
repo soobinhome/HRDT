@@ -63,11 +63,13 @@ export function Sidebar() {
           HR
         </div>
         <div className="leading-tight">
-          <div className="text-[15px] font-bold tracking-tight text-ink-900">
-            유통BG 인재 컨트롤타워
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-[14px] font-bold tracking-tight text-ink-900">E-Allocator</span>
+            <span className="text-[10px] font-medium text-ink-300">/</span>
+            <span className="text-[14px] font-bold tracking-tight text-brand-600">E-Navigator</span>
           </div>
-          <div className="text-[11px] font-medium text-ink-400">
-            HR Intelligence Platform
+          <div className="text-[10.5px] font-medium text-ink-400">
+            유통BG 인재 컨트롤타워
           </div>
         </div>
       </div>

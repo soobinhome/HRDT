@@ -54,9 +54,12 @@ function birthDecadeOf(age: number): string {
 
 // ── 상수 ──────────────────────────────────────
 const GRADE_GROUPS  = ["전체", "사원급", "대리급", "과장급", "차장급", "부장급", "임원"];
-const BIRTH_DECADES = ["전체", "60년대생", "70년대생", "80년대생", "90년대생"];
+const BIRTH_DECADES = ["전체", "60년대생", "70년대생", "80년대생", "90년대생", "00년대생"];
 const PERF_TYPES    = ["전체", "고성과형", "프로세스형", "전략형", "사람형", "개척형"] as const;
 const SCHOOL_TIERS  = ["전체", "3개대", "7개대", "12개대", "25개대", "지방국립대", "기타대"];
+const EVAL_GRADES   = ["전체", "HP", "SP", "IP", "A", "C"] as const;
+const EDU_FILTERS   = ["전체", "경영자반", "새싹반", "ESI"] as const;
+type EduFilter = (typeof EDU_FILTERS)[number];
 
 const EVAL_TONE: Record<EvalGrade, string> = {
   HP: "bg-signal-greenBg text-signal-green",
@@ -85,24 +88,31 @@ export function TalentClient() {
   const [birthDecade, setBirthDecade]= useState("전체");
   const [perfType,    setPerfType]   = useState("전체");
   const [schoolTier,  setSchoolTier] = useState("전체");
+  const [evalGrade,   setEvalGrade]  = useState("전체");
+  const [eduFilter,   setEduFilter]  = useState<EduFilter>("전체");
   const [selected,    setSelected]   = useState<CandidateInternal | null>(null);
 
   const view = useMemo(() => {
     const ql = q.trim().toLowerCase();
     return SAMPLE_EMPLOYEES.filter((e) => {
-      const okG  = group       === "전체" || e.gradeGroup === group;
-      const okB  = birthDecade === "전체" || birthDecadeOf(e.age) === birthDecade;
-      const okP  = perfType    === "전체" || classifyPerformanceType(e) === perfType;
-      const okST = schoolTier  === "전체" || e.schoolTier === schoolTier;
-      const hay  = [
+      const okG   = group       === "전체" || e.gradeGroup === group;
+      const okB   = birthDecade === "전체" || birthDecadeOf(e.age) === birthDecade;
+      const okP   = perfType    === "전체" || classifyPerformanceType(e) === perfType;
+      const okST  = schoolTier  === "전체" || e.schoolTier === schoolTier;
+      const okEV  = evalGrade   === "전체" || e.avgEval === evalGrade;
+      const okEdu = eduFilter   === "전체"
+        || (eduFilter === "경영자반" && e.managerClass)
+        || (eduFilter === "새싹반"   && e.sproutClass)
+        || (eduFilter === "ESI"      && e.esiClass);
+      const hay   = [
         e.name, e.orgGroup, e.orgName, e.grade, e.jobType, e.jobTitle,
         e.mbti, e.school ?? "", e.major ?? "",
         ...e.job, ...e.strengths,
       ].join(" ").toLowerCase();
-      const okQ  = !ql || hay.includes(ql);
-      return okG && okB && okP && okST && okQ;
+      const okQ   = !ql || hay.includes(ql);
+      return okG && okB && okP && okST && okEV && okEdu && okQ;
     });
-  }, [q, group, birthDecade, perfType, schoolTier]);
+  }, [q, group, birthDecade, perfType, schoolTier, evalGrade, eduFilter]);
 
   const activeCount = SAMPLE_EMPLOYEES.filter(e => e.status === "재직자").length;
 
@@ -180,6 +190,30 @@ export function TalentClient() {
               ))}
             </div>
           </div>
+
+          {/* Row 6: 평가 */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[11px] font-semibold text-ink-400">평가</span>
+            <div className="flex items-center gap-1">
+              {EVAL_GRADES.map((g) => (
+                <button key={g} onClick={() => setEvalGrade(g)}
+                  className={cn(BTN_BASE, evalGrade === g
+                    ? (g === "전체" ? BTN_ON : cn("border-transparent", EVAL_TONE[g as EvalGrade]))
+                    : BTN_OFF)}>{g}</button>
+              ))}
+            </div>
+          </div>
+
+          {/* Row 7: 교육 수료 */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[11px] font-semibold text-ink-400">교육</span>
+            <div className="flex items-center gap-1">
+              {EDU_FILTERS.map((edu) => (
+                <button key={edu} onClick={() => setEduFilter(edu)}
+                  className={cn(BTN_BASE, eduFilter === edu ? BTN_ON : BTN_OFF)}>{edu}</button>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* 결과 수 */}
@@ -198,7 +232,6 @@ export function TalentClient() {
                   <th className="px-4 py-3">조직</th>
                   <th className="px-4 py-3">직무</th>
                   <th className="px-4 py-3">체류</th>
-                  <th className="px-4 py-3">DISC</th>
                   <th className="px-4 py-3">평가</th>
                   <th className="px-4 py-3">성과 유형</th>
                   <th className="px-4 py-3">대표 강점</th>
@@ -227,9 +260,6 @@ export function TalentClient() {
                         {e.jobType || <span className="text-ink-300">—</span>}
                       </td>
                       <td className="px-4 py-2.5 text-ink-500">{e.gradeYears}년</td>
-                      <td className="px-4 py-2.5">
-                        <span className="chip bg-brand-50 text-brand-700">{e.disc}형</span>
-                      </td>
                       <td className="px-4 py-2.5">
                         <span className={cn("chip", EVAL_TONE[e.avgEval])}>{e.avgEval}</span>
                       </td>

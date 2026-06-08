@@ -89,6 +89,7 @@ export interface CandidateInternal {
   ebgPass: OX;
   managerClass: boolean; // 경영자반
   sproutClass: boolean;  // 새싹반
+  esiClass: boolean;     // ESI 수료
   groundExp: boolean;    // 밑바닥경험
 
   // 학교 정보

@@ -6,7 +6,7 @@ import { Radar } from "@/components/ui/dataviz";
 import { metricToScore, classifyPerformanceType, PerformanceType, getPerformanceTypeBasis } from "@/lib/scoring";
 import {
   analyzePersonal, recommendBosses, recommendSubordinates,
-  EXT_TYPE_META, FitResult, RecommendedPerson, ExtendedType, TypeSignal,
+  EXT_TYPE_META, FitResult, RecommendedPerson, ExtendedType,
 } from "@/lib/analysis";
 import { CandidateInternal, METRIC_KEYS, EvalGrade } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -421,7 +421,7 @@ function Body({ emp, onClose, pool }: { emp: CandidateInternal; onClose: () => v
 
           {/* 탭 패널 */}
           {activeTab === 0 && (
-            <TabPersonalAnalysis analysis={personal} emp={emp} />
+            <TabPersonalAnalysis analysis={personal} />
           )}
           {activeTab === 1 && (
             <TabBossRecommend recs={bossRecs} emp={emp} />
@@ -445,7 +445,7 @@ function Body({ emp, onClose, pool }: { emp: CandidateInternal; onClose: () => v
 }
 
 // ── 탭 1: 개인 유형 분석 ──────────────────────────
-function TabPersonalAnalysis({ analysis, emp }: { analysis: ReturnType<typeof analyzePersonal>; emp: CandidateInternal }) {
+function TabPersonalAnalysis({ analysis }: { analysis: ReturnType<typeof analyzePersonal> }) {
   const meta = EXT_TYPE_META[analysis.coreType];
   return (
     <div className="space-y-5 p-4">

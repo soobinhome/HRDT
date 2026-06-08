@@ -345,7 +345,7 @@ export function getPerformanceTypeBasis(
     strengths.filter(s => targets.some(t => s.includes(t) || t.includes(s)));
 
   let matchedStrengths: string[] = [];
-  let mbtiBasis: string[] = [];
+  const mbtiBasis: string[] = [];
 
   if (ptype === "고성과 유형") {
     matchedStrengths = strMatch(["성취욕","성취","최상주의자","최상화","승부","집중","책임","행동","존재감","경쟁","자기확신"]);

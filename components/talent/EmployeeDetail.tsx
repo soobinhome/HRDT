@@ -35,11 +35,11 @@ const METRIC_SYMBOL: Record<string, string> = {
 };
 
 const PERF_TYPE_STYLE: Record<PerformanceType, { chip: string; desc: string }> = {
-  현장형: {
+  "고성과 유형": {
     chip: "bg-signal-greenBg text-signal-green",
     desc: "실행·추진 중심. 성취·책임·승부 강점, AC/PE 컴스타일, ExTx MBTI, D/I DISC.",
   },
-  분석형: {
+  "프로세스형": {
     chip: "bg-signal-blueBg text-signal-blue",
     desc: "체계·관리 중심. 분석·체계·집중 강점, PR 컴스타일, xSTJ MBTI, C/S DISC.",
   },
@@ -111,10 +111,16 @@ function Body({ emp, onClose }: { emp: CandidateInternal; onClose: () => void })
                   : "-",
               },
               { label: "전공",        value: emp.major || "-" },
+              { label: "성과 유형",   value: ptype || "-" },
             ].map(({ label, value }) => (
               <div key={label} className="rounded-xl bg-canvas px-3 py-2.5">
                 <div className="text-[10.5px] text-ink-400 mb-0.5">{label}</div>
-                <div className="text-[13px] font-semibold text-ink-900">{value}</div>
+                <div className={cn(
+                  "text-[13px] font-semibold",
+                  label === "성과 유형" && ptype
+                    ? PERF_TYPE_STYLE[ptype].chip.split(" ").find(c => c.startsWith("text-")) ?? "text-ink-900"
+                    : "text-ink-900"
+                )}>{value}</div>
               </div>
             ))}
           </div>
@@ -175,14 +181,23 @@ function Body({ emp, onClose }: { emp: CandidateInternal; onClose: () => void })
             <div className="text-[13px] font-bold text-ink-900">DISC 성향</div>
             {(["D","I","S","C"] as const).map((d) => {
               const val = emp.discScores[d];
+              const isDom = val === discMax;
+              const barColor: Record<string, string> = {
+                D: "bg-signal-red",
+                I: "bg-signal-amber",
+                S: "bg-signal-green",
+                C: "bg-signal-blue",
+              };
               return (
                 <div key={d}>
                   <div className="mb-1 flex justify-between text-[11.5px]">
-                    <span className="text-ink-700">{d} · {DISC_LABEL[d]}</span>
-                    <span className="font-semibold">{val}</span>
+                    <span className={cn("font-medium", isDom ? "text-ink-900 font-bold" : "text-ink-700")}>
+                      {isDom && "★ "}{d} · {DISC_LABEL[d]}
+                    </span>
+                    <span className={cn("font-semibold", isDom ? "text-ink-900" : "text-ink-500")}>{val}</span>
                   </div>
-                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-canvas">
-                    <div className={cn("h-full rounded-full", val === discMax ? "bg-brand-700" : "bg-ink-200")}
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-canvas">
+                    <div className={cn("h-full rounded-full opacity-80", isDom ? "opacity-100" : "", barColor[d])}
                       style={{ width: `${(val / 14) * 100}%` }} />
                   </div>
                 </div>
@@ -215,16 +230,22 @@ function Body({ emp, onClose }: { emp: CandidateInternal; onClose: () => void })
               {(["AC","PR","PE","ID"] as const).map((k) => {
                 const val = emp.comStyle![k];
                 const isDom = val === comMax;
+                const comBarColor: Record<string, string> = {
+                  AC: "bg-signal-green",
+                  PR: "bg-signal-blue",
+                  PE: "bg-signal-amber",
+                  ID: "bg-brand-500",
+                };
                 return (
                   <div key={k}>
                     <div className="mb-1 flex justify-between text-[11.5px]">
-                      <span className={cn("font-medium", isDom ? "text-brand-700" : "text-ink-700")}>
+                      <span className={cn("font-medium", isDom ? "text-ink-900 font-bold" : "text-ink-700")}>
                         {isDom && "★ "}{k} · {COM_LABEL[k]}
                       </span>
-                      <span className={cn("font-bold", isDom ? "text-brand-700" : "text-ink-500")}>{val}</span>
+                      <span className={cn("font-bold", isDom ? "text-ink-900" : "text-ink-500")}>{val}</span>
                     </div>
-                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-canvas">
-                      <div className={cn("h-full rounded-full", isDom ? "bg-brand-700" : "bg-ink-200")}
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-canvas">
+                      <div className={cn("h-full rounded-full opacity-80", isDom ? "opacity-100" : "", comBarColor[k])}
                         style={{ width: `${(val / 20) * 100}%` }} />
                     </div>
                   </div>

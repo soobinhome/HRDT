@@ -235,7 +235,7 @@ export function getSchoolTier(school: string | undefined): string {
 }
 
 // ── 성과 유형 판별 ─────────────────────────────
-export type PerformanceType = "현장형" | "분석형" | "전략형" | "피플형";
+export type PerformanceType = "고성과 유형" | "프로세스형" | "전략형" | "피플형";
 
 const M_RANK: Record<string, number> = { "◎": 4, "○": 3, "△": 2, "X": 1, "-": 0 };
 
@@ -289,7 +289,7 @@ export function classifyPerformanceType(
     mbti.length >= 4 && mbti[0] === "E" && mbti[2] === "T" &&
     (disc === "D" || disc === "I") &&
     metricGte(m["열정"]) && metricGte(m["전략"]) && metricGte(m["리더십"])
-  ) return "현장형";
+  ) return "고성과 유형";
 
   // 분석형
   if (
@@ -298,7 +298,7 @@ export function classifyPerformanceType(
     mbti.length >= 4 && mbti[1] === "S" && mbti[2] === "T" && mbti[3] === "J" &&
     (disc === "C" || disc === "S") &&
     metricGte(m["집요함"]) && metricGte(m["시스템사고"]) && metricGte(m["리더십"])
-  ) return "분석형";
+  ) return "프로세스형";
 
   // 피플형
   if (

@@ -235,7 +235,7 @@ export function getSchoolTier(school: string | undefined): string {
 }
 
 // ── 성과 유형 판별 ─────────────────────────────
-export type PerformanceType = "고성과 유형" | "프로세스형" | "전략형" | "피플형";
+export type PerformanceType = "고성과형" | "프로세스형" | "전략형" | "사람형" | "개척형";
 
 const M_RANK: Record<string, number> = { "◎": 4, "○": 3, "△": 2, "X": 1, "-": 0 };
 
@@ -251,6 +251,16 @@ function comDom(
   const max = Math.max(cs.AC, cs.PR, cs.PE, cs.ID);
   if (max === 0) return false;
   return keys.some((k) => cs[k] === max);
+}
+
+function comBoth(
+  cs: CandidateInternal["comStyle"] | undefined,
+  k1: "AC" | "PR" | "PE" | "ID",
+  k2: "AC" | "PR" | "PE" | "ID",
+): boolean {
+  if (!cs) return false;
+  const max = Math.max(cs.AC, cs.PR, cs.PE, cs.ID);
+  return max > 0 && cs[k1] >= max * 0.6 && cs[k2] >= max * 0.6;
 }
 
 // CSV에서 일부 강점명 약칭 허용 (예: 최상화 = 최상주의자)
@@ -282,16 +292,16 @@ export function classifyPerformanceType(
     (lang + math) / 2 >= 7
   ) return "전략형";
 
-  // 현장형
+  // 고성과형 (AC와 PE 동반 필수)
   if (
     hasStr(strengths, ["성취", "최상주의자", "승부", "집중", "책임", "행동", "존재감"]) &&
-    comDom(comStyle, "AC", "PE") &&
+    comBoth(comStyle, "AC", "PE") &&
     mbti.length >= 4 && mbti[0] === "E" && mbti[2] === "T" &&
     (disc === "D" || disc === "I") &&
     metricGte(m["열정"]) && metricGte(m["전략"]) && metricGte(m["리더십"])
-  ) return "고성과 유형";
+  ) return "고성과형";
 
-  // 분석형
+  // 프로세스형
   if (
     hasStr(strengths, ["분석", "체계", "심사숙고", "복구", "정리", "집중", "회고"]) &&
     comDom(comStyle, "PR") &&
@@ -300,12 +310,20 @@ export function classifyPerformanceType(
     metricGte(m["집요함"]) && metricGte(m["시스템사고"]) && metricGte(m["리더십"])
   ) return "프로세스형";
 
-  // 피플형
+  // 개척형
   if (
-    hasStr(strengths, ["개발", "절친", "사교성", "개별화", "매력"]) &&
-    comDom(comStyle, "PE") &&
+    hasStr(strengths, ["발상", "미래지향", "자기확신", "사교성", "적응", "수집"]) &&
+    comDom(comStyle, "ID", "PR") &&
+    mbti.length >= 4 && mbti[1] === "N" && mbti[3] === "P" &&
+    (disc === "D" || disc === "I")
+  ) return "개척형";
+
+  // 사람형
+  if (
+    hasStr(strengths, ["개발", "절친", "사교성", "개별화", "매력", "공감", "화합", "긍정"]) &&
+    comDom(comStyle, "PE", "PR") &&
     disc === "I"
-  ) return "피플형";
+  ) return "사람형";
 
   return null;
 }
@@ -347,7 +365,7 @@ export function getPerformanceTypeBasis(
   let matchedStrengths: string[] = [];
   const mbtiBasis: string[] = [];
 
-  if (ptype === "고성과 유형") {
+  if (ptype === "고성과형") {
     matchedStrengths = strMatch(["성취욕","성취","최상주의자","최상화","승부","집중","책임","행동","존재감","경쟁","자기확신"]);
     if (mbti[0] === "E") mbtiBasis.push("외향(E)");
     if (mbti[2] === "T") mbtiBasis.push("사고(T)");
@@ -361,7 +379,12 @@ export function getPerformanceTypeBasis(
     matchedStrengths = strMatch(["전략","발상","미래지향","지적사고","수집","맥락","배움","분석"]);
     if (mbti[1] === "N") mbtiBasis.push("직관(N)");
     if (mbti[2] === "T") mbtiBasis.push("논리(T)");
-  } else if (ptype === "피플형") {
+  } else if (ptype === "개척형") {
+    matchedStrengths = strMatch(["발상","미래지향","자기확신","사교성","적응","수집","행동"]);
+    if (mbti[1] === "N") mbtiBasis.push("직관(N)");
+    if (mbti[3] === "P") mbtiBasis.push("유연(P)");
+    if (mbti[0] === "E") mbtiBasis.push("외향(E)");
+  } else if (ptype === "사람형") {
     matchedStrengths = strMatch(["개발","절친","사교성","개별화","매력","공감","화합","긍정"]);
     if (mbti[2] === "F") mbtiBasis.push("감정(F)");
     if (mbti[0] === "E") mbtiBasis.push("외향(E)");

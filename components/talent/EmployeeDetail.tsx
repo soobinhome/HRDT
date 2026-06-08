@@ -11,7 +11,7 @@ import {
 import { CandidateInternal, METRIC_KEYS, EvalGrade } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { IconCheck, IconWarn, IconSpark } from "@/components/ui/icons";
-import { attritionRisk } from "./TalentClient";
+import { attritionRisk, getActionBadge } from "./TalentClient";
 
 // ── 상수 ──────────────────────────────────────
 const EVAL_TONE: Record<EvalGrade, string> = {
@@ -48,23 +48,54 @@ const METRIC_SYMBOL: Record<string, string> = {
 };
 
 const PERF_TYPE_STYLE: Record<PerformanceType, { chip: string; desc: string }> = {
-  "고성과 유형": {
+  고성과형: {
     chip: "bg-signal-greenBg text-signal-green",
-    desc: "실행·추진 중심. 성취·책임·승부 강점, AC/PE 컴스타일, ExTx MBTI, D/I DISC.",
+    desc: "실행·추진 중심. 성취·책임·승부 강점, AC+PE 컴스타일(동반 필수), ExTx MBTI, D/I DISC.",
   },
-  "프로세스형": {
+  프로세스형: {
     chip: "bg-signal-blueBg text-signal-blue",
     desc: "체계·관리 중심. 분석·체계·집중 강점, PR 컴스타일, xSTJ MBTI, C/S DISC.",
   },
   전략형: {
     chip: "bg-brand-50 text-brand-700",
-    desc: "창의·혁신 중심. 전략·발상·미래지향 강점, ID 컴스타일, xNTx MBTI, D/I DISC.",
+    desc: "전략·혁신 중심. 전략·발상·미래지향 강점, ID 컴스타일, xNTx MBTI, D/I DISC.",
   },
-  피플형: {
+  사람형: {
     chip: "bg-signal-amberBg text-signal-amber",
     desc: "관계·조화 중심. 개발·절친·개별화 강점, PE 컴스타일, I DISC.",
   },
+  개척형: {
+    chip: "bg-signal-redBg text-signal-red",
+    desc: "개척·혁신 중심. 발상·미래지향·자기확신 강점, ID/PR 컴스타일, xNxP MBTI, D/I DISC.",
+  },
 };
+
+// ── 요약 판단 헬퍼 ────────────────────────────
+const TYPE_JOB_FIT: Record<string, string[]> = {
+  고성과형:  ["영업", "매출", "사업추진", "PM", "상품"],
+  프로세스형: ["운영", "재무", "관리", "물류", "구매", "SCM", "총무"],
+  사람형:    ["인사", "HR", "교육", "HRM", "HRD", "채용"],
+  전략형:    ["전략", "기획", "브랜드", "IR", "경영기획"],
+  개척형:    ["신사업", "채널", "MD", "마케팅", "플랫폼"],
+};
+const TYPE_PLACEMENT: Record<string, string[]> = {
+  고성과형:  ["영업본부 핵심과제", "사업추진 PM", "성과집중 과제 리더"],
+  프로세스형: ["운영개선 TF", "재무·관리 포스트", "프로세스 정비 과제"],
+  사람형:    ["HRM·HRD 과제", "온보딩 총괄", "조직문화 개선"],
+  전략형:    ["전략기획 포스트", "신사업 발굴 TF", "조직개편 지원"],
+  개척형:    ["신채널 개척", "신사업 파일럿", "외부 파트너십 구축"],
+};
+const ST_THRESH: Record<string, number> = {
+  사원급: 3, 대리급: 4, 과장급: 5, 차장급: 5, 부장급: 6, 임원: 99,
+};
+function abDesc(label: string): string {
+  if (label === "핵심인재 유지면담") return "우수 성과자 — 조기 면담 및 처우 검토를 권장합니다.";
+  if (label === "승진검토 필요")    return "승진 기회 제공 또는 역할 재설계 검토가 필요합니다.";
+  if (label === "이동/역할전환 검토") return "장기 체류 — 담당 업무 변화 또는 이동 검토를 권장합니다.";
+  if (label === "복직 후 포스트 설계") return "휴직 복귀 후 역할 재설계 및 온보딩 계획이 필요합니다.";
+  if (label === "장기체류 리스크")  return "7년 이상 동일 직위 — 순환 배치 또는 역할 확장 검토를 권장합니다.";
+  return "";
+}
 
 const VERDICT_STYLE: Record<FitResult["verdict"], string> = {
   "즉시 추천":   "bg-signal-greenBg text-signal-green",
@@ -131,6 +162,27 @@ function Body({ emp, onClose, pool }: { emp: CandidateInternal; onClose: () => v
 
   const personal = useMemo(() => analyzePersonal(emp), [emp]);
 
+  // 요약 판단 계산
+  const sThresh       = ST_THRESH[emp.gradeGroup] ?? 5;
+  const jobStr        = [...emp.job, emp.orgName].join(" ");
+  const fitKeywords   = TYPE_JOB_FIT[personal.coreType] ?? [];
+  const jobFit        = fitKeywords.some(k => jobStr.includes(k));
+  const currentJudgment = jobFit
+    ? `현 직무 적합 — ${personal.coreType} 역량 방향 일치`
+    : "직무-유형 검토 필요 — 현재 직무 재검토 권장";
+  const summaryRisks: string[] = [];
+  if (emp.gradeYears >= 7) summaryRisks.push(`장기체류 ${emp.gradeYears}년`);
+  else if (emp.gradeYears >= sThresh) summaryRisks.push(`승진적체 ${emp.gradeYears}년`);
+  if (emp.avgEval === "C") summaryRisks.push("최근 평가 C");
+  if (emp.status === "휴직자") summaryRisks.push("현재 휴직 중");
+  if (!jobFit) summaryRisks.push("직무-유형 불일치 가능");
+  const summaryActions: string[] = ["포스트 매칭 검토"];
+  if (emp.avgEval === "HP" || emp.avgEval === "SP") summaryActions.push("핵심인재 유지 면담");
+  else if (emp.avgEval === "C") summaryActions.push("성과 원인 파악 면담");
+  if (emp.gradeYears >= sThresh) summaryActions.push("역할 재설계 면담");
+  summaryActions.push("리더-멤버 Fit 확인");
+  const summaryPlacements = TYPE_PLACEMENT[personal.coreType] ?? [];
+
   const bossRecs = useMemo(
     () => (activeTab === 1 ? recommendBosses(emp, pool) : []),
     [activeTab, emp, pool],
@@ -153,6 +205,60 @@ function Body({ emp, onClose, pool }: { emp: CandidateInternal; onClose: () => v
 
       <div className="flex-1 space-y-5 overflow-y-auto px-6 py-5">
 
+        {/* ── 요약 판단 ── */}
+        <div className="card p-4">
+          <div className="mb-3 flex items-center gap-1.5">
+            <IconSpark className="h-4 w-4 text-brand-700" />
+            <div className="text-[13px] font-bold text-ink-900">요약 판단</div>
+          </div>
+          <div className="grid grid-cols-[110px_1fr] gap-x-4 gap-y-2.5">
+            <div className="text-[11px] text-ink-400 pt-0.5">핵심 유형</div>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className={cn("chip font-bold", EXT_TYPE_CHIP[personal.coreType])}>
+                {personal.coreType}
+              </span>
+              {personal.subTypes.length > 0 && (
+                <>
+                  <span className="text-[10.5px] text-ink-400">보조</span>
+                  {personal.subTypes.map(t => (
+                    <span key={t} className={cn("chip text-[10.5px]", EXT_TYPE_CHIP[t])}>{t}</span>
+                  ))}
+                </>
+              )}
+            </div>
+
+            <div className="text-[11px] text-ink-400 pt-0.5">현재 판단</div>
+            <div className={cn("text-[12px] font-medium", jobFit ? "text-signal-green" : "text-signal-amber")}>
+              {currentJudgment}
+            </div>
+
+            <div className="text-[11px] text-ink-400 pt-0.5">추천 액션</div>
+            <div className="flex flex-wrap gap-1">
+              {summaryActions.map((a, i) => (
+                <span key={i} className="rounded-md bg-brand-50 px-2 py-0.5 text-[10.5px] font-medium text-brand-700">{a}</span>
+              ))}
+            </div>
+
+            <div className="text-[11px] text-ink-400 pt-0.5">리스크</div>
+            <div className="flex flex-wrap gap-1">
+              {summaryRisks.length > 0 ? (
+                summaryRisks.map((r, i) => (
+                  <span key={i} className="rounded-md bg-signal-redBg px-2 py-0.5 text-[10.5px] font-medium text-signal-red">{r}</span>
+                ))
+              ) : (
+                <span className="text-[11px] text-signal-green">특이 리스크 없음</span>
+              )}
+            </div>
+
+            <div className="text-[11px] text-ink-400 pt-0.5">추천 배치</div>
+            <div className="flex flex-wrap gap-1">
+              {summaryPlacements.map((p, i) => (
+                <span key={i} className="rounded-md bg-canvas px-2 py-0.5 text-[10.5px] text-ink-600">{p}</span>
+              ))}
+            </div>
+          </div>
+        </div>
+
         {/* ── 기본 정보 ── */}
         <div className="card p-4">
           <div className="mb-3 text-[13px] font-bold text-ink-900">기본 정보</div>
@@ -160,7 +266,7 @@ function Body({ emp, onClose, pool }: { emp: CandidateInternal; onClose: () => v
             {[
               { label: "조직구분",     value: emp.orgGroup    || "-" },
               { label: "조직명",       value: emp.orgName     || "-" },
-              { label: "본사/현장",    value: emp.workLocation|| "-" },
+              { label: "직무",         value: emp.job.slice(0, 3).join(" · ") || "-" },
               { label: "직급",         value: emp.grade       || "-" },
               { label: "최종 승진",    value: emp.lastPromotion ? emp.lastPromotion.slice(0, 7) : "-" },
               { label: "현 직위 체류", value: `${emp.gradeYears}년` },
@@ -202,16 +308,20 @@ function Body({ emp, onClose, pool }: { emp: CandidateInternal; onClose: () => v
           <span className="chip bg-canvas text-ink-500">{emp.mbti}</span>
           <span className="chip bg-canvas text-ink-500">언어 {emp.lang}</span>
           <span className="chip bg-canvas text-ink-500">수리 {emp.math}</span>
-          {risk === "승진적체" && (
-            <span className="chip bg-signal-amberBg text-signal-amber">
-              <IconWarn className="h-3 w-3" /> 승진적체 주의
-            </span>
-          )}
-          {risk === "평가하락" && (
-            <span className="chip bg-signal-redBg text-signal-red">
-              <IconWarn className="h-3 w-3" /> 평가하락 위험
-            </span>
-          )}
+          {(() => {
+            const ab = getActionBadge(emp, ptype);
+            if (ab) return (
+              <span className={cn("chip", ab.style)}>
+                <IconWarn className="h-3 w-3" /> {ab.label}
+              </span>
+            );
+            if (risk === "평가하락") return (
+              <span className="chip bg-signal-redBg text-signal-red">
+                <IconWarn className="h-3 w-3" /> 평가하락 위험
+              </span>
+            );
+            return null;
+          })()}
           {emp.ebgPass === "O" && <span className="chip bg-signal-greenBg text-signal-green"><IconCheck className="h-3 w-3" /> EBG 통과</span>}
           {emp.managerClass   && <span className="chip bg-signal-amberBg text-signal-amber">경영자반</span>}
           {emp.sproutClass    && <span className="chip bg-canvas text-ink-500">새싹반</span>}
@@ -368,26 +478,38 @@ function Body({ emp, onClose, pool }: { emp: CandidateInternal; onClose: () => v
         </div>
 
         {/* ── 이탈 위험 분석 ── */}
-        {risk && (
-          <div className={cn("rounded-2xl p-4", risk === "승진적체" ? "bg-signal-amberBg" : "bg-signal-redBg")}>
-            <div className={cn("flex items-center gap-2 mb-2 text-[13px] font-bold",
-              risk === "승진적체" ? "text-signal-amber" : "text-signal-red")}>
-              <IconWarn className="h-4 w-4" />
-              이탈 위험 감지 — {risk}
-            </div>
-            {risk === "승진적체" && (
-              <p className="text-[12px] text-ink-700">
-                현 직위 체류 <strong>{emp.gradeYears}년</strong>으로 {emp.gradeGroup} 평균 기준 초과.
-                승진 기회 제공 또는 역할 재설계 검토가 필요합니다.
-              </p>
-            )}
-            {risk === "평가하락" && (
+        {(() => {
+          const ab = getActionBadge(emp, ptype);
+          if (ab) {
+            const isRed = ab.style.includes("red");
+            const isBlue = ab.style.includes("blue");
+            return (
+              <div className={cn("rounded-2xl p-4",
+                isRed ? "bg-signal-redBg" : isBlue ? "bg-signal-blueBg" : "bg-signal-amberBg")}>
+                <div className={cn("flex items-center gap-2 mb-2 text-[13px] font-bold",
+                  isRed ? "text-signal-red" : isBlue ? "text-signal-blue" : "text-signal-amber")}>
+                  <IconWarn className="h-4 w-4" />
+                  {ab.label}
+                </div>
+                <p className="text-[12px] text-ink-700">
+                  현 직위 체류 <strong>{emp.gradeYears}년</strong>. {abDesc(ab.label)}
+                </p>
+              </div>
+            );
+          }
+          if (risk === "평가하락") return (
+            <div className="rounded-2xl p-4 bg-signal-redBg">
+              <div className="flex items-center gap-2 mb-2 text-[13px] font-bold text-signal-red">
+                <IconWarn className="h-4 w-4" />
+                평가하락 위험
+              </div>
               <p className="text-[12px] text-ink-700">
                 최근 평가 등급 <strong>C</strong>. 성과 원인 파악 및 1:1 코칭·업무 재배치 검토를 권장합니다.
               </p>
-            )}
-          </div>
-        )}
+            </div>
+          );
+          return null;
+        })()}
 
         {/* ══════════════════════════════════════════
             고급 분석 탭 (Premium Feature)
@@ -569,14 +691,40 @@ function TabBossRecommend({ recs, emp }: { recs: RecommendedPerson[]; emp: Candi
       </div>
     );
   }
+  const preview = recs.slice(0, 1);
+  const locked  = recs.slice(1);
   return (
     <div className="space-y-3 p-4">
       <div className="text-[11px] text-ink-400">
         {emp.name}에게 맞는 상사 추천 — Fit 점수 기준 상위 {recs.length}명
       </div>
-      {recs.map(({ emp: boss, fit, coreType }, idx) => (
+      {preview.map(({ emp: boss, fit, coreType }, idx) => (
         <RecommendCard key={boss.id} rank={idx + 1} person={boss} fit={fit} coreType={coreType} role="boss" />
       ))}
+      {locked.length > 0 && (
+        <div className="space-y-2">
+          {locked.slice(0, 2).map((_, i) => (
+            <div key={i} className="pointer-events-none select-none rounded-xl border border-line bg-surface opacity-40 blur-sm">
+              <div className="flex items-center gap-3 px-3 py-2.5">
+                <div className="h-6 w-6 shrink-0 rounded-full bg-brand-100" />
+                <div className="h-4 w-36 rounded-md bg-canvas" />
+                <div className="ml-auto flex gap-2">
+                  <div className="h-4 w-14 rounded-md bg-canvas" />
+                  <div className="h-4 w-10 rounded-md bg-canvas" />
+                </div>
+              </div>
+            </div>
+          ))}
+          <div className="rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-center">
+            <div className="text-[12px] font-semibold text-brand-700">
+              나머지 {locked.length}명은 프리미엄 플랜에서 확인 가능합니다
+            </div>
+            <div className="mt-0.5 text-[10.5px] text-brand-400">
+              전체 추천 목록 · 상세 Fit 분석 · HR 개입 레벨 포함
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -590,14 +738,40 @@ function TabSubRecommend({ recs, emp }: { recs: RecommendedPerson[]; emp: Candid
       </div>
     );
   }
+  const preview = recs.slice(0, 1);
+  const locked  = recs.slice(1);
   return (
     <div className="space-y-3 p-4">
       <div className="text-[11px] text-ink-400">
         {emp.name}과 함께할 부하 추천 — Fit 점수 기준 상위 {recs.length}명
       </div>
-      {recs.map(({ emp: sub, fit, coreType }, idx) => (
+      {preview.map(({ emp: sub, fit, coreType }, idx) => (
         <RecommendCard key={sub.id} rank={idx + 1} person={sub} fit={fit} coreType={coreType} role="sub" />
       ))}
+      {locked.length > 0 && (
+        <div className="space-y-2">
+          {locked.slice(0, 2).map((_, i) => (
+            <div key={i} className="pointer-events-none select-none rounded-xl border border-line bg-surface opacity-40 blur-sm">
+              <div className="flex items-center gap-3 px-3 py-2.5">
+                <div className="h-6 w-6 shrink-0 rounded-full bg-brand-100" />
+                <div className="h-4 w-36 rounded-md bg-canvas" />
+                <div className="ml-auto flex gap-2">
+                  <div className="h-4 w-14 rounded-md bg-canvas" />
+                  <div className="h-4 w-10 rounded-md bg-canvas" />
+                </div>
+              </div>
+            </div>
+          ))}
+          <div className="rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-center">
+            <div className="text-[12px] font-semibold text-brand-700">
+              나머지 {locked.length}명은 프리미엄 플랜에서 확인 가능합니다
+            </div>
+            <div className="mt-0.5 text-[10.5px] text-brand-400">
+              전체 추천 목록 · 상세 Fit 분석 · HR 개입 레벨 포함
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -164,7 +164,7 @@ function Body({ emp, onClose, pool }: { emp: CandidateInternal; onClose: () => v
 
   // 요약 판단 계산
   const sThresh       = ST_THRESH[emp.gradeGroup] ?? 5;
-  const jobStr        = [...emp.job, emp.orgName].join(" ");
+  const jobStr        = [emp.jobType, emp.orgName, ...emp.job].join(" ");
   const fitKeywords   = TYPE_JOB_FIT[personal.coreType] ?? [];
   const jobFit        = fitKeywords.some(k => jobStr.includes(k));
   const currentJudgment = jobFit
@@ -266,7 +266,8 @@ function Body({ emp, onClose, pool }: { emp: CandidateInternal; onClose: () => v
             {[
               { label: "조직구분",     value: emp.orgGroup    || "-" },
               { label: "조직명",       value: emp.orgName     || "-" },
-              { label: "직무",         value: emp.job.slice(0, 3).join(" · ") || "-" },
+              { label: "직무",         value: emp.jobType     || "-" },
+              { label: "직책",         value: emp.jobTitle    || "-" },
               { label: "직급",         value: emp.grade       || "-" },
               { label: "최종 승진",    value: emp.lastPromotion ? emp.lastPromotion.slice(0, 7) : "-" },
               { label: "현 직위 체류", value: `${emp.gradeYears}년` },

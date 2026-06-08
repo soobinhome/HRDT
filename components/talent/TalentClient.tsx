@@ -95,7 +95,7 @@ export function TalentClient() {
       const okP  = perfType    === "전체" || classifyPerformanceType(e) === perfType;
       const okST = schoolTier  === "전체" || e.schoolTier === schoolTier;
       const hay  = [
-        e.name, e.orgGroup, e.orgName, e.grade, e.workLocation,
+        e.name, e.orgGroup, e.orgName, e.grade, e.jobType, e.jobTitle,
         e.mbti, e.school ?? "", e.major ?? "",
         ...e.job, ...e.strengths,
       ].join(" ").toLowerCase();
@@ -223,13 +223,8 @@ export function TalentClient() {
                         <div className="truncate">{e.orgName}</div>
                         <div className="text-[11px] text-ink-300">{e.orgGroup}</div>
                       </td>
-                      <td className="px-4 py-2.5">
-                        <div className="flex flex-wrap gap-0.5">
-                          {e.job.slice(0, 2).map(j => (
-                            <span key={j} className="rounded-md bg-canvas px-1.5 py-0.5 text-[10.5px] text-ink-500">{j}</span>
-                          ))}
-                          {!e.job.length && <span className="text-[11px] text-ink-300">—</span>}
-                        </div>
+                      <td className="px-4 py-2.5 text-ink-600 text-[12px]">
+                        {e.jobType || <span className="text-ink-300">—</span>}
                       </td>
                       <td className="px-4 py-2.5 text-ink-500">{e.gradeYears}년</td>
                       <td className="px-4 py-2.5">

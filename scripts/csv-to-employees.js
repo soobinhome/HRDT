@@ -130,6 +130,8 @@ const employees = dataLines
       status,                              // 재직자 / 휴직자
       orgGroup:     v(cols, C.ORG_GROUP),
       orgName:      v(cols, C.ORG_NAME),
+      jobType:      v(cols, C.JOB_TYPE),
+      jobTitle:     v(cols, C.JOB_TITLE),
       grade,
       gradeGroup:   gradeGroup(grade),
       workLocation: v(cols, C.WORK_LOC),

@@ -62,6 +62,8 @@ export interface CandidateInternal {
   // 기본 정보
   orgGroup: string;   // 조직구분 (유통BG, 의류BG 등)
   orgName: string;    // 조직명
+  jobType: string;    // 직종명 (직무 기능 영역, 예: 전략기획·VMD·영업)
+  jobTitle: string;   // 직책명 (역할, 예: 팀장·실장·담당)
   grade: string;      // 레벨직위명 (예: 과장)
   gradeGroup: string; // 사원급/대리급/과장급/차장급/부장급/임원
   workLocation: string; // 본사/현장 구분

@@ -2,7 +2,7 @@
 
 import { Drawer, DrawerHeader } from "@/components/ui/Drawer";
 import { Radar } from "@/components/ui/dataviz";
-import { metricToScore } from "@/lib/scoring";
+import { metricToScore, classifyPerformanceType, PerformanceType } from "@/lib/scoring";
 import { CandidateInternal, METRIC_KEYS, EvalGrade } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { IconCheck, IconWarn, IconSpark } from "@/components/ui/icons";
@@ -34,6 +34,25 @@ const METRIC_SYMBOL: Record<string, string> = {
   "△": "text-signal-amber", "X": "text-signal-red", "-": "text-ink-300",
 };
 
+const PERF_TYPE_STYLE: Record<PerformanceType, { chip: string; desc: string }> = {
+  현장형: {
+    chip: "bg-signal-greenBg text-signal-green",
+    desc: "실행·추진 중심. 성취·책임·승부 강점, AC/PE 컴스타일, ExTx MBTI, D/I DISC.",
+  },
+  분석형: {
+    chip: "bg-signal-blueBg text-signal-blue",
+    desc: "체계·관리 중심. 분석·체계·집중 강점, PR 컴스타일, xSTJ MBTI, C/S DISC.",
+  },
+  전략형: {
+    chip: "bg-brand-50 text-brand-700",
+    desc: "창의·혁신 중심. 전략·발상·미래지향 강점, ID 컴스타일, xNTx MBTI, D/I DISC.",
+  },
+  피플형: {
+    chip: "bg-signal-amberBg text-signal-amber",
+    desc: "관계·조화 중심. 개발·절친·개별화 강점, PE 컴스타일, I DISC.",
+  },
+};
+
 function emoneyColor(v: number) {
   if (v >= 1)  return { chip: "bg-signal-greenBg text-signal-green", label: "우수" };
   if (v >= 0)  return { chip: "bg-canvas text-ink-500",              label: "보통" };
@@ -61,6 +80,7 @@ function Body({ emp, onClose }: { emp: CandidateInternal; onClose: () => void })
   const risk        = attritionRisk(emp);
   const emoney      = emp.emoney ?? 0;
   const emoneyStyle = emoneyColor(emoney);
+  const ptype       = classifyPerformanceType(emp);
 
   return (
     <>
@@ -76,7 +96,7 @@ function Body({ emp, onClose }: { emp: CandidateInternal; onClose: () => void })
         {/* ── 기본 정보 카드 ── */}
         <div className="card p-4">
           <div className="mb-3 text-[13px] font-bold text-ink-900">기본 정보</div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-4 gap-3">
             {[
               { label: "조직구분",    value: emp.orgGroup    || "-" },
               { label: "조직명",      value: emp.orgName     || "-" },
@@ -84,6 +104,13 @@ function Body({ emp, onClose }: { emp: CandidateInternal; onClose: () => void })
               { label: "직급",        value: emp.grade       || "-" },
               { label: "최종 승진",   value: emp.lastPromotion ? emp.lastPromotion.slice(0, 7) : "-" },
               { label: "현 직위 체류", value: `${emp.gradeYears}년` },
+              {
+                label: "출신 학교",
+                value: emp.school
+                  ? `${emp.school}${emp.schoolTier ? ` (${emp.schoolTier})` : ""}`
+                  : "-",
+              },
+              { label: "전공",        value: emp.major || "-" },
             ].map(({ label, value }) => (
               <div key={label} className="rounded-xl bg-canvas px-3 py-2.5">
                 <div className="text-[10.5px] text-ink-400 mb-0.5">{label}</div>
@@ -95,6 +122,13 @@ function Body({ emp, onClose }: { emp: CandidateInternal; onClose: () => void })
 
         {/* ── 뱃지 행 ── */}
         <div className="flex flex-wrap gap-2">
+          {/* 성과 유형 */}
+          {ptype && (
+            <span className={cn("chip font-bold text-[12px]", PERF_TYPE_STYLE[ptype].chip)}>
+              ★ {ptype}
+            </span>
+          )}
+
           {/* E머니 */}
           <span className={cn("chip font-bold", emoneyStyle.chip)}>
             E머니 {emoney > 0 ? "+" : ""}{emoney} · {emoneyStyle.label}
@@ -217,19 +251,28 @@ function Body({ emp, onClose }: { emp: CandidateInternal; onClose: () => void })
             </ul>
           </div>
 
-          {/* 강점 유형 — 판별 기준 입력 후 활성화 */}
-          <div className="card p-4 border-dashed">
+          {/* 성과 유형 */}
+          <div className={cn("card p-4", ptype ? "" : "border-dashed")}>
             <div className="mb-2 flex items-center gap-1.5">
               <IconSpark className="h-4 w-4 text-brand-700" />
-              <div className="text-[13px] font-bold text-ink-900">강점 유형</div>
-              <span className="chip bg-brand-50 text-brand-700 text-[10px]">업데이트 예정</span>
+              <div className="text-[13px] font-bold text-ink-900">성과 유형</div>
             </div>
-            <p className="text-[12px] text-ink-400 leading-relaxed">
-              강점 유형 판별 기준이 확정되면 자동으로 유형을 분류합니다.
-              예: 전략형 / 실행형 / 관계형 / 분석형 등
-            </p>
+            {ptype ? (
+              <>
+                <span className={cn("chip font-bold text-[13px]", PERF_TYPE_STYLE[ptype].chip)}>
+                  {ptype}
+                </span>
+                <p className="mt-2 text-[12px] text-ink-500 leading-relaxed">
+                  {PERF_TYPE_STYLE[ptype].desc}
+                </p>
+              </>
+            ) : (
+              <p className="text-[12px] text-ink-400 leading-relaxed">
+                판별 기준에 완전히 부합하는 유형이 없습니다.
+              </p>
+            )}
             <div className="mt-3 flex flex-wrap gap-1.5">
-              {emp.strengths.slice(0, 3).map(s => (
+              {emp.strengths.map(s => (
                 <span key={s} className="rounded-lg bg-brand-50 px-2 py-1 text-[11px] text-brand-600">{s}</span>
               ))}
             </div>

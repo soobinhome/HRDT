@@ -6,28 +6,50 @@
 const fs = require("fs");
 const path = require("path");
 
-const INPUT  = "C:\\Users\\great\\Downloads\\유통 - 시트1.csv";
+const INPUT  = "C:\\Users\\park_soobin02\\Downloads\\유통 - 시트1.csv";
 const OUTPUT_JSON = path.join(__dirname, "..", "lib", "data", "employees.json");
 const OUTPUT_TS   = path.join(__dirname, "..", "lib", "data", "employees.ts");
 
-// ── 컬럼 인덱스 (0-based) ──────────────────────
+// ── 컬럼 인덱스 (0-based) ─ 시트1 v2 (출신학교·학과 col10-11 추가) ──
 const C = {
   NAME: 3, ORG_GROUP: 4, ORG_NAME: 5,
   JOB_TYPE: 6, JOB_TITLE: 7, GRADE: 8,
-  WORK_LOC: 9, EMONEY: 10,
-  LAST_PROMO: 13, GRADE_YEARS: 14,
-  STATUS: 15, AGE: 17,
-  LANG: 18, MATH: 19,
-  PASSION: 20, PERSISTENCE: 21, STRATEGY: 22,
-  SYS_THINK: 23, TEAMWORK: 24, LEADERSHIP: 25,
-  COM_STYLE_LABEL: 26, AC: 27, PR: 28, PE: 29, ID: 30,
-  DISC_LABEL: 31, D: 32, I: 33, S: 34, CV: 35,
-  MBTI: 36,
-  STR1: 41, STR2: 42, STR3: 43, STR4: 44, STR5: 45,
-  JOB_DOMAIN: 46, BOTTOM_EXP: 47,
-  EBG_PASS: 50, AVG_EVAL: 51,
-  MGR_CLASS: 52, SPROUT_CLASS: 53,
+  WORK_LOC: 9, SCHOOL: 10, MAJOR: 11,
+  EMONEY: 12,
+  LAST_PROMO: 15, GRADE_YEARS: 16,
+  STATUS: 17, AGE: 19,
+  LANG: 20, MATH: 21,
+  PASSION: 22, PERSISTENCE: 23, STRATEGY: 24,
+  SYS_THINK: 25, TEAMWORK: 26, LEADERSHIP: 27,
+  COM_STYLE_LABEL: 28, AC: 29, PR: 30, PE: 31, ID: 32,
+  DISC_LABEL: 33, D: 34, I: 35, S: 36, CV: 37,
+  MBTI: 38,
+  STR1: 43, STR2: 44, STR3: 45, STR4: 46, STR5: 47,
+  JOB_DOMAIN: 48, BOTTOM_EXP: 49,
+  EBG_PASS: 52, AVG_EVAL: 53,
+  MGR_CLASS: 54, SPROUT_CLASS: 55,
 };
+
+// ── 학교 티어 매핑 ─────────────────────────────
+const SCHOOL_TIER_MAP = {
+  "서울대": "3개대",  "연세대": "3개대",  "고려대": "3개대",
+  "서강대": "7개대",  "성균관대": "7개대", "성균관대(수원)": "7개대",
+  "한양대": "7개대",  "중앙대": "7개대",
+  "경희대(수원)": "12개대", "경희대": "12개대", "건국대": "12개대",
+  "서울시립대": "12개대",  "한국외대": "12개대", "이화여대": "12개대",
+  "홍익대": "25개대",  "동국대": "25개대",  "국민대": "25개대",
+  "명지대": "25개대",  "인하대": "25개대",  "아주대": "25개대",
+  "서울과기대": "25개대", "서울과학기술대": "25개대", "숭실대": "25개대",
+  "가톨릭대": "25개대", "연세대(원주)": "25개대", "세종대": "25개대",
+  "단국대": "25개대",  "숙명여대": "25개대",
+  "부산대": "지방국립대", "경북대": "지방국립대", "충남대": "지방국립대",
+  "충북대": "지방국립대", "전남대": "지방국립대", "전북대": "지방국립대",
+};
+
+function schoolTier(school) {
+  if (!school) return "";
+  return SCHOOL_TIER_MAP[school] || "기타대";
+}
 
 // ── 헬퍼 함수 ──────────────────────────────────
 
@@ -100,6 +122,8 @@ const employees = dataLines
 
     const job = v(cols, C.JOB_DOMAIN) ? [v(cols, C.JOB_DOMAIN)] : [];
 
+    const school = v(cols, C.SCHOOL);
+
     return {
       id:           `emp-${String(idx + 1).padStart(4, "0")}`,
       name,
@@ -112,6 +136,9 @@ const employees = dataLines
       lastPromotion:v(cols, C.LAST_PROMO),
       gradeYears:   num(cols, C.GRADE_YEARS),
       age:          num(cols, C.AGE),
+      school,
+      major:        v(cols, C.MAJOR),
+      schoolTier:   schoolTier(school),
       emoney:       num(cols, C.EMONEY),
       lang:         num(cols, C.LANG),
       math:         num(cols, C.MATH),

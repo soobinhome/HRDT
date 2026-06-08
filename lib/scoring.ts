@@ -213,6 +213,103 @@ export function rankCandidates(
     .slice(0, limit);
 }
 
+// ── 학교 티어 분류 ─────────────────────────────
+export const SCHOOL_TIER_MAP: Record<string, string> = {
+  "서울대": "3개대",  "연세대": "3개대",  "고려대": "3개대",
+  "서강대": "7개대",  "성균관대": "7개대", "성균관대(수원)": "7개대",
+  "한양대": "7개대",  "중앙대": "7개대",
+  "경희대(수원)": "12개대", "경희대": "12개대", "건국대": "12개대",
+  "서울시립대": "12개대",  "한국외대": "12개대", "이화여대": "12개대",
+  "홍익대": "25개대",  "동국대": "25개대",  "국민대": "25개대",
+  "명지대": "25개대",  "인하대": "25개대",  "아주대": "25개대",
+  "서울과기대": "25개대", "서울과학기술대": "25개대", "숭실대": "25개대",
+  "가톨릭대": "25개대", "연세대(원주)": "25개대", "세종대": "25개대",
+  "단국대": "25개대",  "숙명여대": "25개대",
+  "부산대": "지방국립대", "경북대": "지방국립대", "충남대": "지방국립대",
+  "충북대": "지방국립대", "전남대": "지방국립대", "전북대": "지방국립대",
+};
+
+export function getSchoolTier(school: string | undefined): string {
+  if (!school) return "";
+  return SCHOOL_TIER_MAP[school] ?? "기타대";
+}
+
+// ── 성과 유형 판별 ─────────────────────────────
+export type PerformanceType = "현장형" | "분석형" | "전략형" | "피플형";
+
+const M_RANK: Record<string, number> = { "◎": 4, "○": 3, "△": 2, "X": 1, "-": 0 };
+
+function metricGte(val: string): boolean {
+  return (M_RANK[val] ?? 0) >= 3;
+}
+
+function comDom(
+  cs: CandidateInternal["comStyle"] | undefined,
+  ...keys: Array<"AC" | "PR" | "PE" | "ID">
+): boolean {
+  if (!cs) return false;
+  const max = Math.max(cs.AC, cs.PR, cs.PE, cs.ID);
+  if (max === 0) return false;
+  return keys.some((k) => cs[k] === max);
+}
+
+// CSV에서 일부 강점명 약칭 허용 (예: 최상화 = 최상주의자)
+const STR_ALIASES: Record<string, string[]> = {
+  "최상주의자": ["최상주의자", "최상화"],
+  "성취욕":     ["성취욕", "성취"],
+};
+
+function hasStr(strengths: string[], list: string[]): boolean {
+  return list.some((s) => {
+    const variants = STR_ALIASES[s] ?? [s];
+    return variants.some((a) => strengths.includes(a));
+  });
+}
+
+export function classifyPerformanceType(
+  emp: CandidateInternal
+): PerformanceType | null {
+  const { mbti = "", disc, strengths = [], metrics, comStyle, lang = 0, math = 0 } = emp;
+  const m = metrics;
+
+  // 전략형 (우선 판별 — 기준 가장 엄격)
+  if (
+    hasStr(strengths, ["전략", "발상", "미래지향"]) &&
+    comDom(comStyle, "ID") &&
+    mbti.length >= 4 && mbti[1] === "N" && mbti[2] === "T" &&
+    (disc === "D" || disc === "I") &&
+    metricGte(m["열정"]) && metricGte(m["전략"]) && metricGte(m["리더십"]) &&
+    (lang + math) / 2 >= 7
+  ) return "전략형";
+
+  // 현장형
+  if (
+    hasStr(strengths, ["성취", "최상주의자", "승부", "집중", "책임", "행동", "존재감"]) &&
+    comDom(comStyle, "AC", "PE") &&
+    mbti.length >= 4 && mbti[0] === "E" && mbti[2] === "T" &&
+    (disc === "D" || disc === "I") &&
+    metricGte(m["열정"]) && metricGte(m["전략"]) && metricGte(m["리더십"])
+  ) return "현장형";
+
+  // 분석형
+  if (
+    hasStr(strengths, ["분석", "체계", "심사숙고", "복구", "정리", "집중", "회고"]) &&
+    comDom(comStyle, "PR") &&
+    mbti.length >= 4 && mbti[1] === "S" && mbti[2] === "T" && mbti[3] === "J" &&
+    (disc === "C" || disc === "S") &&
+    metricGte(m["집요함"]) && metricGte(m["시스템사고"]) && metricGte(m["리더십"])
+  ) return "분석형";
+
+  // 피플형
+  if (
+    hasStr(strengths, ["개발", "절친", "사교성", "개별화", "매력"]) &&
+    comDom(comStyle, "PE") &&
+    disc === "I"
+  ) return "피플형";
+
+  return null;
+}
+
 // 외부 인재용 간이 적합도 (파싱 키워드 기반)
 export function scoreExternalFit(
   fitKeywords: string[],

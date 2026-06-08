@@ -51,6 +51,9 @@ export interface ComStyle {
 // ── 이탈 위험 신호 유형 ────────────────────────
 export type AttritionRisk = "평가하락" | "승진적체" | "없음";
 
+// ── 학교 티어 분류 ─────────────────────────────
+export type SchoolTier = "3개대" | "7개대" | "12개대" | "25개대" | "지방국립대" | "기타대";
+
 // ── 내부 인재 ─────────────────────────────────
 export interface CandidateInternal {
   id: string;
@@ -85,6 +88,11 @@ export interface CandidateInternal {
   managerClass: boolean; // 경영자반
   sproutClass: boolean;  // 새싹반
   groundExp: boolean;    // 밑바닥경험
+
+  // 학교 정보
+  school?: string;
+  major?: string;
+  schoolTier?: SchoolTier;
 
   // 추가 정보
   emoney?: number;      // E머니 배수

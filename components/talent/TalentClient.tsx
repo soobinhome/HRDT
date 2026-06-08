@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { SAMPLE_EMPLOYEES } from "@/lib/data/employees";
 import { CandidateInternal, EvalGrade } from "@/lib/types";
+import { classifyPerformanceType, PerformanceType } from "@/lib/scoring";
 import { cn } from "@/lib/utils";
 import { EmployeeDetail } from "./EmployeeDetail";
 import { IconSearch } from "@/components/ui/icons";
@@ -19,9 +20,20 @@ export function attritionRisk(emp: CandidateInternal) {
   return null;
 }
 
+// ── 출생연도 계산 (CSV 기준연도 2026) ──────────
+const REF_YEAR = 2026;
+function birthDecadeOf(age: number): string {
+  if (!age || age <= 0) return "";
+  const year = REF_YEAR - age;
+  return String(Math.floor(year / 10) * 10).slice(2, 4) + "년대생";
+}
+
 // ── 상수 ──────────────────────────────────────
-const GRADE_GROUPS = ["전체", "사원급", "대리급", "과장급", "차장급", "부장급", "임원"];
-const WORK_LOCS    = ["전체", "본사", "현장"];
+const GRADE_GROUPS  = ["전체", "사원급", "대리급", "과장급", "차장급", "부장급", "임원"];
+const WORK_LOCS     = ["전체", "본사", "현장"];
+const BIRTH_DECADES = ["전체", "60년대생", "70년대생", "80년대생", "90년대생"];
+const PERF_TYPES    = ["전체", "현장형", "분석형", "전략형", "피플형"] as const;
+const SCHOOL_TIERS  = ["전체", "3개대", "7개대", "12개대", "25개대", "지방국립대", "기타대"];
 
 const EVAL_TONE: Record<EvalGrade, string> = {
   HP: "bg-signal-greenBg text-signal-green",
@@ -32,33 +44,53 @@ const EVAL_TONE: Record<EvalGrade, string> = {
   "-":"bg-canvas text-ink-400",
 };
 
+const PERF_TYPE_STYLE: Record<PerformanceType, { chip: string; active: string }> = {
+  현장형: { chip: "bg-signal-greenBg text-signal-green", active: "border-signal-green bg-signal-greenBg text-signal-green" },
+  분석형: { chip: "bg-signal-blueBg text-signal-blue",   active: "border-signal-blue bg-signal-blueBg text-signal-blue" },
+  전략형: { chip: "bg-brand-50 text-brand-700",          active: "border-brand-200 bg-brand-50 text-brand-700" },
+  피플형: { chip: "bg-signal-amberBg text-signal-amber", active: "border-signal-amber bg-signal-amberBg text-signal-amber" },
+};
+
 function emoneyColor(v: number) {
   if (v >= 1)  return "bg-signal-greenBg text-signal-green";
   if (v >= 0)  return "bg-canvas text-ink-500";
   return "bg-signal-redBg text-signal-red";
 }
 
+const BTN_BASE = "rounded-xl border px-2.5 py-1.5 text-[12px] font-semibold transition";
+const BTN_OFF  = "border-line bg-surface text-ink-500 hover:bg-canvas";
+const BTN_ON   = "border-brand-200 bg-brand-50 text-brand-700";
+
 export function TalentClient() {
-  const [q,        setQ]       = useState("");
-  const [group,    setGroup]   = useState("전체");
-  const [workLoc,  setWorkLoc] = useState("전체");
-  const [hiPo,     setHiPo]   = useState(false);
-  const [atRisk,   setAtRisk]  = useState(false);
-  const [selected, setSelected] = useState<CandidateInternal | null>(null);
+  const [q,           setQ]          = useState("");
+  const [group,       setGroup]      = useState("전체");
+  const [workLoc,     setWorkLoc]    = useState("전체");
+  const [birthDecade, setBirthDecade]= useState("전체");
+  const [perfType,    setPerfType]   = useState("전체");
+  const [schoolTier,  setSchoolTier] = useState("전체");
+  const [hiPo,        setHiPo]       = useState(false);
+  const [atRisk,      setAtRisk]     = useState(false);
+  const [selected,    setSelected]   = useState<CandidateInternal | null>(null);
 
   const view = useMemo(() => {
     const ql = q.trim().toLowerCase();
     return SAMPLE_EMPLOYEES.filter((e) => {
-      const okG  = group   === "전체" || e.gradeGroup    === group;
-      const okW  = workLoc === "전체" || e.workLocation  === workLoc;
-      const okH  = !hiPo   || e.avgEval === "HP" || e.avgEval === "SP" || e.managerClass;
+      const okG  = group      === "전체" || e.gradeGroup    === group;
+      const okW  = workLoc   === "전체" || e.workLocation  === workLoc;
+      const okB  = birthDecade === "전체" || birthDecadeOf(e.age) === birthDecade;
+      const okP  = perfType  === "전체" || classifyPerformanceType(e) === perfType;
+      const okST = schoolTier === "전체" || e.schoolTier === schoolTier;
+      const okH  = !hiPo  || e.avgEval === "HP" || e.avgEval === "SP" || e.managerClass;
       const okR  = !atRisk || attritionRisk(e) !== null;
-      const hay  = [e.name, e.orgGroup, e.orgName, e.grade, e.workLocation, e.mbti, ...e.job, ...e.strengths]
-                    .join(" ").toLowerCase();
+      const hay  = [
+        e.name, e.orgGroup, e.orgName, e.grade, e.workLocation,
+        e.mbti, e.school ?? "", e.major ?? "",
+        ...e.job, ...e.strengths,
+      ].join(" ").toLowerCase();
       const okQ  = !ql || hay.includes(ql);
-      return okG && okW && okH && okR && okQ;
+      return okG && okW && okB && okP && okST && okH && okR && okQ;
     });
-  }, [q, group, workLoc, hiPo, atRisk]);
+  }, [q, group, workLoc, birthDecade, perfType, schoolTier, hiPo, atRisk]);
 
   const activeCount = SAMPLE_EMPLOYEES.filter(e => e.status === "재직자").length;
 
@@ -71,48 +103,85 @@ export function TalentClient() {
 
       <div className="space-y-4 px-8 py-6">
         {/* 툴바 */}
-        <div className="flex flex-wrap items-center gap-3">
-          {/* 검색 */}
-          <div className="relative w-[280px]">
-            <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
-            <input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="이름·조직·직무·강점 검색"
-              className="input pl-9"
-            />
+        <div className="space-y-2.5">
+
+          {/* Row 1: 검색 + 직급 */}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative w-[260px]">
+              <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
+              <input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="이름·조직·직무·강점·학교 검색"
+                className="input pl-9"
+              />
+            </div>
+            <div className="h-5 w-px bg-line" />
+            <span className="text-[11px] font-semibold text-ink-400">직급</span>
+            <div className="flex items-center gap-1">
+              {GRADE_GROUPS.map((g) => (
+                <button key={g} onClick={() => setGroup(g)}
+                  className={cn(BTN_BASE, group === g ? BTN_ON : BTN_OFF)}>{g}</button>
+              ))}
+            </div>
           </div>
 
-          {/* 직급 필터 */}
-          <div className="flex items-center gap-1">
-            {GRADE_GROUPS.map((g) => (
-              <button key={g} onClick={() => setGroup(g)}
-                className={cn("rounded-xl border px-2.5 py-1.5 text-[12px] font-semibold transition",
-                  group === g ? "border-brand-200 bg-brand-50 text-brand-700" : "border-line bg-surface text-ink-500 hover:bg-canvas"
-                )}>{g}</button>
-            ))}
+          {/* Row 2: 본사/현장 + 출생연도 */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[11px] font-semibold text-ink-400">본사/현장</span>
+            <div className="flex items-center gap-1">
+              {WORK_LOCS.map((w) => (
+                <button key={w} onClick={() => setWorkLoc(w)}
+                  className={cn(BTN_BASE, workLoc === w ? BTN_ON : BTN_OFF)}>{w}</button>
+              ))}
+            </div>
+            <div className="h-5 w-px bg-line" />
+            <span className="text-[11px] font-semibold text-ink-400">출생연도</span>
+            <div className="flex items-center gap-1">
+              {BIRTH_DECADES.map((d) => (
+                <button key={d} onClick={() => setBirthDecade(d)}
+                  className={cn(BTN_BASE, birthDecade === d ? BTN_ON : BTN_OFF)}>{d}</button>
+              ))}
+            </div>
           </div>
 
-          {/* 본사/현장 */}
-          <div className="flex items-center gap-1">
-            {WORK_LOCS.map((w) => (
-              <button key={w} onClick={() => setWorkLoc(w)}
-                className={cn("rounded-xl border px-2.5 py-1.5 text-[12px] font-semibold transition",
-                  workLoc === w ? "border-brand-200 bg-brand-50 text-brand-700" : "border-line bg-surface text-ink-500 hover:bg-canvas"
-                )}>{w}</button>
-            ))}
+          {/* Row 3: 성과 유형 */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[11px] font-semibold text-ink-400">성과 유형</span>
+            <div className="flex items-center gap-1">
+              {PERF_TYPES.map((p) => {
+                const isAll = p === "전체";
+                const active = perfType === p;
+                const style = !isAll && active
+                  ? PERF_TYPE_STYLE[p as PerformanceType].active
+                  : active ? BTN_ON : BTN_OFF;
+                return (
+                  <button key={p} onClick={() => setPerfType(p)}
+                    className={cn(BTN_BASE, style)}>{p}</button>
+                );
+              })}
+            </div>
           </div>
 
-          {/* 토글 필터 */}
-          <button onClick={() => setHiPo(v => !v)}
-            className={cn("rounded-xl border px-2.5 py-1.5 text-[12px] font-semibold transition",
-              hiPo ? "border-signal-green bg-signal-greenBg text-signal-green" : "border-line bg-surface text-ink-500 hover:bg-canvas"
-            )}>⭐ 고성과·핵심</button>
-
-          <button onClick={() => setAtRisk(v => !v)}
-            className={cn("rounded-xl border px-2.5 py-1.5 text-[12px] font-semibold transition",
-              atRisk ? "border-signal-red bg-signal-redBg text-signal-red" : "border-line bg-surface text-ink-500 hover:bg-canvas"
-            )}>⚠️ 이탈 위험</button>
+          {/* Row 4: 학교 + 토글 */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[11px] font-semibold text-ink-400">학교</span>
+            <div className="flex items-center gap-1">
+              {SCHOOL_TIERS.map((s) => (
+                <button key={s} onClick={() => setSchoolTier(s)}
+                  className={cn(BTN_BASE, schoolTier === s ? BTN_ON : BTN_OFF)}>{s}</button>
+              ))}
+            </div>
+            <div className="h-5 w-px bg-line" />
+            <button onClick={() => setHiPo(v => !v)}
+              className={cn(BTN_BASE, hiPo
+                ? "border-signal-green bg-signal-greenBg text-signal-green"
+                : BTN_OFF)}>⭐ 고성과·핵심</button>
+            <button onClick={() => setAtRisk(v => !v)}
+              className={cn(BTN_BASE, atRisk
+                ? "border-signal-red bg-signal-redBg text-signal-red"
+                : BTN_OFF)}>⚠️ 이탈 위험</button>
+          </div>
         </div>
 
         {/* 결과 수 */}
@@ -134,6 +203,7 @@ export function TalentClient() {
                   <th className="px-4 py-3">E머니</th>
                   <th className="px-4 py-3">DISC</th>
                   <th className="px-4 py-3">평가</th>
+                  <th className="px-4 py-3">성과 유형</th>
                   <th className="px-4 py-3">대표 강점</th>
                   <th className="px-4 py-3">상태·표식</th>
                 </tr>
@@ -142,6 +212,7 @@ export function TalentClient() {
                 {view.map((e) => {
                   const risk   = attritionRisk(e);
                   const emoney = e.emoney ?? 0;
+                  const ptype  = classifyPerformanceType(e);
                   return (
                     <tr key={e.id} onClick={() => setSelected(e)}
                       className="cursor-pointer border-b border-line/60 text-[12.5px] transition last:border-0 hover:bg-canvas">
@@ -170,6 +241,15 @@ export function TalentClient() {
                       </td>
                       <td className="px-4 py-2.5">
                         <span className={cn("chip", EVAL_TONE[e.avgEval])}>{e.avgEval}</span>
+                      </td>
+                      <td className="px-4 py-2.5">
+                        {ptype ? (
+                          <span className={cn("chip text-[11px] font-semibold", PERF_TYPE_STYLE[ptype].chip)}>
+                            {ptype}
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-ink-300">—</span>
+                        )}
                       </td>
                       <td className="px-4 py-2.5 text-ink-500 max-w-[160px]">
                         <div className="truncate">{e.strengths.slice(0, 3).join(" · ")}</div>

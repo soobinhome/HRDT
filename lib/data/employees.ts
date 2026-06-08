@@ -1,5 +1,5 @@
 // ⚠️ 자동 생성 파일 — scripts/csv-to-employees.js 로 생성
-// 생성일: 2026-06-07
+// 생성일: 2026-06-08
 // 총 1109명
 
 import { CandidateInternal } from "../types";

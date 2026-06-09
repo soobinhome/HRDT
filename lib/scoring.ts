@@ -306,7 +306,7 @@ export function classifyPerformanceType(
     hasStr(strengths, ["분석", "체계", "심사숙고", "복구", "정리", "집중", "회고"]) &&
     comDom(comStyle, "PR") &&
     mbti.length >= 4 && mbti[1] === "S" && mbti[2] === "T" && mbti[3] === "J" &&
-    (disc === "C" || disc === "S") &&
+    (disc === "C" || disc === "S" || disc === "I") &&
     metricGte(m["집요함"]) && metricGte(m["시스템사고"]) && metricGte(m["리더십"])
   ) return "프로세스형";
 

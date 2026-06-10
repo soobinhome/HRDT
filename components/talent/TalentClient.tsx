@@ -7,6 +7,7 @@ import { CandidateInternal, EvalGrade } from "@/lib/types";
 import { classifyPerformanceType, PerformanceType } from "@/lib/scoring";
 import { cn } from "@/lib/utils";
 import { EmployeeDetail } from "./EmployeeDetail";
+import { PlacementMode } from "./PlacementMode";
 import { IconSearch } from "@/components/ui/icons";
 
 // ── 이탈 위험 계산 ─────────────────────────────
@@ -82,7 +83,10 @@ const BTN_BASE = "rounded-xl border px-2.5 py-1.5 text-[12px] font-semibold tran
 const BTN_OFF  = "border-line bg-surface text-ink-500 hover:bg-canvas";
 const BTN_ON   = "border-brand-200 bg-brand-50 text-brand-700";
 
+type PageMode = "talent" | "placement";
+
 export function TalentClient() {
+  const [pageMode,    setPageMode]   = useState<PageMode>("talent");
   const [q,           setQ]          = useState("");
   const [group,       setGroup]      = useState("전체");
   const [birthDecade, setBirthDecade]= useState("전체");
@@ -124,6 +128,39 @@ export function TalentClient() {
       />
 
       <div className="space-y-4 px-8 py-6">
+        {/* ── 모드 토글 ── */}
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => setPageMode("talent")}
+            className={cn(
+              "rounded-xl border px-3.5 py-2 text-[12.5px] font-semibold transition",
+              pageMode === "talent"
+                ? "border-brand-200 bg-brand-50 text-brand-700"
+                : "border-line bg-surface text-ink-500 hover:bg-canvas"
+            )}
+          >
+            📋 인재 풀
+          </button>
+          <button
+            onClick={() => setPageMode("placement")}
+            className={cn(
+              "rounded-xl border px-3.5 py-2 text-[12.5px] font-semibold transition",
+              pageMode === "placement"
+                ? "border-brand-200 bg-brand-50 text-brand-700"
+                : "border-line bg-surface text-ink-500 hover:bg-canvas"
+            )}
+          >
+            🗺️ 배치 모드
+          </button>
+        </div>
+
+        {/* ── 배치 모드 ── */}
+        {pageMode === "placement" && (
+          <PlacementMode pool={SAMPLE_EMPLOYEES} />
+        )}
+
+        {/* ── 인재 풀 모드 ── */}
+        {pageMode === "talent" && (<>
         {/* 툴바 */}
         <div className="space-y-2.5">
 
@@ -302,6 +339,7 @@ export function TalentClient() {
             </div>
           )}
         </div>
+        </>)}
       </div>
 
       <EmployeeDetail emp={selected} onClose={() => setSelected(null)} pool={SAMPLE_EMPLOYEES} />

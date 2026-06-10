@@ -291,6 +291,12 @@ function Body({ emp, onClose, pool }: { emp: CandidateInternal; onClose: () => v
               </div>
             ))}
           </div>
+          {emp.address && (
+            <div className="mt-3 rounded-xl bg-canvas px-3 py-2.5">
+              <div className="text-[10.5px] text-ink-400 mb-0.5">자택 주소</div>
+              <div className="text-[12.5px] text-ink-700">{emp.address}</div>
+            </div>
+          )}
         </div>
 
         {/* ── 뱃지 행 ── */}

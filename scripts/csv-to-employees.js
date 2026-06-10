@@ -6,7 +6,7 @@
 const fs = require("fs");
 const path = require("path");
 
-const INPUT  = "C:\\Users\\park_soobin02\\Downloads\\유통 - 시트1.csv";
+const INPUT  = "C:\\Users\\park_soobin02\\Downloads\\유통 - 시트1 (1).csv";
 const OUTPUT_JSON = path.join(__dirname, "..", "lib", "data", "employees.json");
 const OUTPUT_TS   = path.join(__dirname, "..", "lib", "data", "employees.ts");
 
@@ -28,6 +28,7 @@ const C = {
   JOB_DOMAIN: 48, BOTTOM_EXP: 49,
   EBG_PASS: 52, AVG_EVAL: 53,
   MGR_CLASS: 54, SPROUT_CLASS: 55, ESI_CLASS: 56,
+  ADDRESS: 58,  // 자택 주소 (v3 추가)
 };
 
 // ── 학교 티어 매핑 ─────────────────────────────
@@ -169,6 +170,7 @@ const employees = dataLines
       sproutClass: v(cols, C.SPROUT_CLASS) === "O",
       esiClass:    v(cols, C.ESI_CLASS) === "O",
       groundExp:   v(cols, C.BOTTOM_EXP) === "O",
+      address:     v(cols, C.ADDRESS) || undefined,
     };
   })
   .filter(Boolean);

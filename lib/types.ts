@@ -100,6 +100,7 @@ export interface CandidateInternal {
   // 추가 정보
   emoney?: number;      // E머니 배수
   status?: string;      // 재직자 / 휴직자
+  address?: string;     // 자택 주소 (배치 근접성 계산용)
 
   // 이탈 위험 (자동 계산)
   attritionRisk?: AttritionRisk;

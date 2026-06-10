@@ -7,10 +7,6 @@ import { IconSearch } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import commuteData from "@/lib/data/commute-matrix.json";
 
-// ── 통근 기준 (법규·취업규칙) ─────────────────────────
-// 편도 최대: 75분 (왕복 150분)
-const MAX_ONE_WAY_MIN = 75;
-
 // ── commute-matrix 타입 ───────────────────────────────
 type CommuteMatrix = {
   generatedAt: string;
@@ -21,22 +17,34 @@ type CommuteMatrix = {
 };
 const RAW_MATRIX = commuteData as unknown as CommuteMatrix;
 
+// ── 통근 기준 (법규·취업규칙) ─────────────────────────
+const MAX_ONE_WAY_MIN = 75;
+const LOAD_MORE_STEP  = 50;
+const INITIAL_DISPLAY = 30;
+
 // ── 편도 소요시간 추정 ────────────────────────────────
-// 직선거리 기준 (Haversine) + 대중교통 평균속도 + 대기 10분
 function estimateMin(km: number): number {
   if (km <= 0) return 0;
-  const speed = km < 8 ? 18 : km < 20 ? 22 : 27; // km/h
+  const speed = km < 8 ? 18 : km < 20 ? 22 : 27;
   return Math.round((km / speed) * 60 + 10);
+}
+function speedKmh(km: number): number {
+  return km < 8 ? 18 : km < 20 ? 22 : 27;
 }
 
 // ── 소요시간 → 칩 스타일 ─────────────────────────────
-function timeChipClass(min: number): string {
+function timeChipCls(min: number): string {
   if (min <= 30) return "bg-signal-greenBg text-signal-green";
   if (min <= 60) return "bg-signal-amberBg text-signal-amber";
   return "bg-orange-50 text-orange-600";
 }
+function timeTextCls(min: number): string {
+  if (min <= 30) return "text-signal-green";
+  if (min <= 60) return "text-signal-amber";
+  return "text-orange-600";
+}
 
-// ── 직원의 점포별 소요시간 (정렬 후 반환) ────────────
+// ── 직원의 점포별 소요시간 ───────────────────────────
 function getStoreCommutes(empId: string) {
   const entry = RAW_MATRIX.employees[empId];
   if (!entry) return [];
@@ -52,7 +60,7 @@ function getStoreCommutes(empId: string) {
     .sort((a, b) => a.min - b.min);
 }
 
-// ── 점포의 근거리 직원 소요시간 (정렬 후 반환) ───────
+// ── 점포의 근거리 직원 소요시간 ─────────────────────
 function getEmployeeCommutes(storeId: string, pool: CandidateInternal[]) {
   const idx = RAW_MATRIX.storeIds.indexOf(storeId);
   if (idx === -1) return [];
@@ -66,6 +74,111 @@ function getEmployeeCommutes(storeId: string, pool: CandidateInternal[]) {
     if (min <= MAX_ONE_WAY_MIN) result.push({ emp, km, min });
   }
   return result.sort((a, b) => a.min - b.min);
+}
+
+// ── 경로 상세 인라인 카드 ─────────────────────────────
+interface RouteCardProps {
+  empName: string;
+  empAddress: string;
+  empLat: number;
+  empLng: number;
+  storeName: string;
+  storeAddress: string;
+  storeLat: number;
+  storeLng: number;
+  km: number;
+  min: number;
+  onClose: () => void;
+}
+
+function RouteCard({
+  empName, empAddress, empLat, empLng,
+  storeName, storeAddress, storeLat, storeLng,
+  km, min, onClose,
+}: RouteCardProps) {
+  const speed = speedKmh(km);
+  const googleUrl =
+    `https://www.google.com/maps/dir/?api=1` +
+    `&origin=${empLat},${empLng}` +
+    `&destination=${storeLat},${storeLng}` +
+    `&travelmode=transit`;
+
+  return (
+    <div className="mx-4 mb-3 rounded-2xl border border-brand-200 bg-brand-50 p-4 space-y-3">
+
+      {/* 헤더 */}
+      <div className="flex items-center justify-between">
+        <span className="text-[12px] font-bold text-brand-700">📍 경로 상세</span>
+        <button
+          onClick={onClose}
+          className="rounded-lg px-2 py-0.5 text-[11px] text-ink-400 hover:bg-brand-100 hover:text-ink-700 transition"
+        >
+          ✕ 닫기
+        </button>
+      </div>
+
+      {/* 출발 → 도착 */}
+      <div className="flex gap-3">
+        {/* 아이콘 + 선 */}
+        <div className="flex flex-col items-center pt-1">
+          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-white border border-signal-greenBg text-[11px]">🏠</div>
+          <div className="w-px flex-1 bg-brand-200 my-1" />
+          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-white border border-brand-200 text-[11px]">🏬</div>
+        </div>
+        {/* 주소 */}
+        <div className="flex-1 space-y-2 min-w-0">
+          <div className="rounded-xl bg-white px-3 py-2">
+            <div className="text-[10.5px] text-ink-400">출발지</div>
+            <div className="text-[12.5px] font-semibold text-ink-800">{empName} 자택</div>
+            <div className="text-[11px] text-ink-500 leading-snug mt-0.5 break-all">{empAddress}</div>
+          </div>
+          <div className="rounded-xl bg-white px-3 py-2">
+            <div className="text-[10.5px] text-ink-400">도착지</div>
+            <div className="text-[12.5px] font-semibold text-ink-800">{storeName}</div>
+            <div className="text-[11px] text-ink-500 leading-snug mt-0.5">{storeAddress}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* 수치 3칸 */}
+      <div className="grid grid-cols-3 divide-x divide-line rounded-xl border border-line bg-white py-2.5">
+        <div className="text-center px-2">
+          <div className="text-[10.5px] text-ink-400">직선거리</div>
+          <div className="mt-0.5 text-[16px] font-bold text-ink-800">
+            {km.toFixed(1)}<span className="text-[10px] font-normal text-ink-400"> km</span>
+          </div>
+        </div>
+        <div className="text-center px-2">
+          <div className="text-[10.5px] text-ink-400">편도 예상</div>
+          <div className={cn("mt-0.5 text-[16px] font-bold", timeTextCls(min))}>
+            약 {min}<span className="text-[10px] font-normal text-ink-400"> 분</span>
+          </div>
+        </div>
+        <div className="text-center px-2">
+          <div className="text-[10.5px] text-ink-400">왕복 예상</div>
+          <div className="mt-0.5 text-[16px] font-bold text-ink-800">
+            약 {min * 2}<span className="text-[10px] font-normal text-ink-400"> 분</span>
+          </div>
+        </div>
+      </div>
+
+      {/* 하단: 기준 + 링크 */}
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[10.5px] text-ink-400 leading-snug">
+          기준 속도 {speed}km/h + 대기 10분<br />
+          <span className="text-ink-300">(직선거리 기반 추정값)</span>
+        </span>
+        <a
+          href={googleUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="shrink-0 flex items-center gap-1.5 rounded-xl border border-line bg-white px-3 py-2 text-[11.5px] font-semibold text-ink-700 hover:bg-canvas transition"
+        >
+          🗺 Google Maps 경로
+        </a>
+      </div>
+    </div>
+  );
 }
 
 type SubMode = "employee" | "store";
@@ -110,9 +223,10 @@ export function PlacementMode({ pool }: { pool: CandidateInternal[] }) {
 
 // ── 직원 검색 패널 ─────────────────────────────────────
 function EmployeeSearchPanel({ pool }: { pool: CandidateInternal[] }) {
-  const [query, setQuery]       = useState("");
-  const [selected, setSelected] = useState<CandidateInternal | null>(null);
-  const [showList, setShowList] = useState(false);
+  const [query, setQuery]         = useState("");
+  const [selected, setSelected]   = useState<CandidateInternal | null>(null);
+  const [showList, setShowList]   = useState(false);
+  const [activeStoreId, setActive] = useState<string | null>(null);
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -126,11 +240,9 @@ function EmployeeSearchPanel({ pool }: { pool: CandidateInternal[] }) {
       .slice(0, 15);
   }, [query, pool]);
 
-  // 가능 점포 Top 5 (75분 이내, 가까운 순)
   const topStores = useMemo(() => {
     if (!selected) return [];
-    const commutes = getStoreCommutes(selected.id);
-    return commutes
+    return getStoreCommutes(selected.id)
       .slice(0, 5)
       .map(c => {
         const store = STORES.find(s => s.id === c.storeId);
@@ -145,6 +257,11 @@ function EmployeeSearchPanel({ pool }: { pool: CandidateInternal[] }) {
     setSelected(emp);
     setQuery("");
     setShowList(false);
+    setActive(null);
+  }
+
+  function toggleStore(storeId: string) {
+    setActive(prev => (prev === storeId ? null : storeId));
   }
 
   return (
@@ -176,17 +293,11 @@ function EmployeeSearchPanel({ pool }: { pool: CandidateInternal[] }) {
                   <span className="ml-1.5 text-[11px] text-ink-400">{emp.grade} · {emp.orgName}</span>
                 </div>
                 {RAW_MATRIX.employees[emp.id] ? (
-                  <span className="shrink-0 rounded-md bg-signal-greenBg px-1.5 py-0.5 text-[10.5px] text-signal-green">
-                    거리산출
-                  </span>
+                  <span className="shrink-0 rounded-md bg-signal-greenBg px-1.5 py-0.5 text-[10.5px] text-signal-green">거리산출</span>
                 ) : emp.address ? (
-                  <span className="shrink-0 rounded-md bg-canvas px-1.5 py-0.5 text-[10.5px] text-ink-400">
-                    조회실패
-                  </span>
+                  <span className="shrink-0 rounded-md bg-canvas px-1.5 py-0.5 text-[10.5px] text-ink-400">조회실패</span>
                 ) : (
-                  <span className="shrink-0 rounded-md bg-canvas px-1.5 py-0.5 text-[10.5px] text-ink-400">
-                    주소없음
-                  </span>
+                  <span className="shrink-0 rounded-md bg-canvas px-1.5 py-0.5 text-[10.5px] text-ink-400">주소없음</span>
                 )}
               </button>
             ))}
@@ -209,14 +320,12 @@ function EmployeeSearchPanel({ pool }: { pool: CandidateInternal[] }) {
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-[15px] font-bold text-ink-900">{selected.name}</span>
-                  <span className="rounded-lg bg-canvas px-2 py-0.5 text-[11.5px] text-ink-500">
-                    {selected.grade}
-                  </span>
+                  <span className="rounded-lg bg-canvas px-2 py-0.5 text-[11.5px] text-ink-500">{selected.grade}</span>
                 </div>
                 <div className="mt-0.5 text-[12px] text-ink-500">{selected.orgName}</div>
               </div>
               <button
-                onClick={() => setSelected(null)}
+                onClick={() => { setSelected(null); setActive(null); }}
                 className="rounded-lg bg-canvas px-2 py-1 text-[11px] text-ink-400 hover:text-ink-700 transition"
               >
                 초기화
@@ -231,9 +340,7 @@ function EmployeeSearchPanel({ pool }: { pool: CandidateInternal[] }) {
                 </div>
               </div>
             ) : (
-              <div className="mt-3 rounded-xl bg-canvas px-3 py-2 text-[12px] text-ink-400">
-                자택 주소 데이터 없음
-              </div>
+              <div className="mt-3 rounded-xl bg-canvas px-3 py-2 text-[12px] text-ink-400">자택 주소 데이터 없음</div>
             )}
           </div>
 
@@ -242,7 +349,7 @@ function EmployeeSearchPanel({ pool }: { pool: CandidateInternal[] }) {
             <div className="flex items-center gap-2 border-b border-line px-4 py-2.5">
               <span className="text-[12px] font-bold text-ink-700">배치 가능 점포 Top 5</span>
               {hasMatrix ? (
-                <span className="text-[11px] text-ink-400">— 편도 75분 이내 · 직선거리 기반</span>
+                <span className="text-[11px] text-ink-400">— 편도 75분 이내 · 클릭하면 경로 상세</span>
               ) : (
                 <span className="text-[11px] text-signal-amber">
                   — {selected.address ? "좌표 조회 실패" : "주소 없음"}
@@ -263,26 +370,62 @@ function EmployeeSearchPanel({ pool }: { pool: CandidateInternal[] }) {
                 <div className="text-[12.5px] font-medium text-ink-500">편도 75분 이내 배치 가능 점포 없음</div>
               </div>
             ) : (
-              topStores.map(({ store, km, min }, i) => (
-                <div
-                  key={store.id}
-                  className="flex items-center gap-3 border-b border-line/60 px-4 py-3 last:border-0"
-                >
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-50 text-[11px] font-bold text-brand-700">
-                    {i + 1}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="text-[13px] font-semibold text-ink-900">{store.name}</div>
-                    <div className="text-[11px] text-ink-400">{store.address}</div>
+              topStores.map(({ store, km, min }, i) => {
+                const isOpen    = activeStoreId === store.id;
+                const empEntry  = RAW_MATRIX.employees[selected.id];
+                const storeCoord = RAW_MATRIX.storeCoords[store.id];
+                const canRoute  = !!(empEntry && storeCoord && selected.address);
+
+                return (
+                  <div key={store.id} className="border-b border-line/60 last:border-0">
+                    {/* 행 */}
+                    <button
+                      onClick={() => canRoute && toggleStore(store.id)}
+                      className={cn(
+                        "flex w-full items-center gap-3 px-4 py-3 text-left transition",
+                        canRoute ? "hover:bg-canvas cursor-pointer" : "cursor-default",
+                        isOpen && "bg-brand-50"
+                      )}
+                    >
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-50 text-[11px] font-bold text-brand-700">
+                        {i + 1}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[13px] font-semibold text-ink-900">{store.name}</div>
+                        <div className="text-[11px] text-ink-400">{store.address}</div>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <div className={cn("chip text-[11px] mb-0.5", timeChipCls(min))}>
+                          편도 약 {min}분
+                        </div>
+                        <div className="text-[10.5px] text-ink-400">{km.toFixed(1)} km (직선)</div>
+                      </div>
+                      {canRoute && (
+                        <span className="ml-1 shrink-0 text-[10px] text-ink-300">
+                          {isOpen ? "▲" : "▼"}
+                        </span>
+                      )}
+                    </button>
+
+                    {/* 경로 상세 (인라인 확장) */}
+                    {isOpen && empEntry && storeCoord && selected.address && (
+                      <RouteCard
+                        empName={selected.name}
+                        empAddress={selected.address}
+                        empLat={empEntry.lat}
+                        empLng={empEntry.lng}
+                        storeName={store.name}
+                        storeAddress={store.address}
+                        storeLat={storeCoord.lat}
+                        storeLng={storeCoord.lng}
+                        km={km}
+                        min={min}
+                        onClose={() => setActive(null)}
+                      />
+                    )}
                   </div>
-                  <div className="shrink-0 text-right">
-                    <div className={cn("chip text-[11px] mb-0.5", timeChipClass(min))}>
-                      편도 약 {min}분
-                    </div>
-                    <div className="text-[10.5px] text-ink-400">{km.toFixed(1)} km (직선)</div>
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
@@ -297,8 +440,10 @@ function EmployeeSearchPanel({ pool }: { pool: CandidateInternal[] }) {
 
 // ── 점포 선택 패널 ─────────────────────────────────────
 function StoreSearchPanel({ pool }: { pool: CandidateInternal[] }) {
-  const [query, setQuery]       = useState("");
-  const [selected, setSelected] = useState<Store | null>(null);
+  const [query, setQuery]         = useState("");
+  const [selected, setSelected]   = useState<Store | null>(null);
+  const [displayCount, setDisplayCount] = useState(INITIAL_DISPLAY);
+  const [activeEmpId, setActiveEmp]     = useState<string | null>(null);
 
   const filteredStores = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -310,13 +455,22 @@ function StoreSearchPanel({ pool }: { pool: CandidateInternal[] }) {
     );
   }, [query]);
 
-  // 근거리 직원 (75분 이내, 가까운 순, 최대 30명 표시)
   const nearbyEmployees = useMemo(() => {
     if (!selected) return [];
     return getEmployeeCommutes(selected.id, pool);
   }, [selected, pool]);
 
-  const displayed = nearbyEmployees.slice(0, 30);
+  function selectStore(store: Store) {
+    setSelected(store);
+    setDisplayCount(INITIAL_DISPLAY);
+    setActiveEmp(null);
+  }
+
+  function toggleEmp(empId: string) {
+    setActiveEmp(prev => (prev === empId ? null : empId));
+  }
+
+  const displayed = nearbyEmployees.slice(0, displayCount);
 
   return (
     <div className="grid grid-cols-[280px_1fr] gap-4 items-start">
@@ -339,7 +493,7 @@ function StoreSearchPanel({ pool }: { pool: CandidateInternal[] }) {
             filteredStores.map(store => (
               <button
                 key={store.id}
-                onClick={() => setSelected(store)}
+                onClick={() => selectStore(store)}
                 className={cn(
                   "flex w-full items-center gap-2.5 border-b border-line/60 px-3 py-2.5 text-left transition last:border-0 hover:bg-canvas",
                   selected?.id === store.id && "bg-brand-50"
@@ -355,7 +509,7 @@ function StoreSearchPanel({ pool }: { pool: CandidateInternal[] }) {
         </div>
       </div>
 
-      {/* 오른쪽: 근거리 직원 */}
+      {/* 오른쪽: 결과 */}
       {selected ? (
         <div className="space-y-3">
           {/* 점포 카드 */}
@@ -366,58 +520,104 @@ function StoreSearchPanel({ pool }: { pool: CandidateInternal[] }) {
                 <div className="text-[15px] font-bold text-ink-900">{selected.name}</div>
                 <div className="mt-0.5 text-[12px] text-ink-500">{selected.address}</div>
                 <div className="mt-1.5 flex gap-1.5">
-                  <span className="rounded-lg bg-canvas px-2 py-0.5 text-[11px] text-ink-500">
-                    {selected.type}
-                  </span>
-                  <span className="rounded-lg bg-canvas px-2 py-0.5 text-[11px] text-ink-500">
-                    {selected.region}
-                  </span>
+                  <span className="rounded-lg bg-canvas px-2 py-0.5 text-[11px] text-ink-500">{selected.type}</span>
+                  <span className="rounded-lg bg-canvas px-2 py-0.5 text-[11px] text-ink-500">{selected.region}</span>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* 근거리 직원 목록 */}
+          {/* 근거리 직원 */}
           <div className="overflow-hidden rounded-2xl border border-line bg-surface">
             <div className="flex items-center gap-2 border-b border-line px-4 py-2.5">
               <span className="text-[12px] font-bold text-ink-700">배치 가능 직원</span>
               <span className="text-[11px] text-ink-400">
                 편도 75분 이내 · 총 {nearbyEmployees.length.toLocaleString()}명
               </span>
+              {nearbyEmployees.length > 0 && (
+                <span className="text-[11px] text-ink-400">· 클릭하면 경로 상세</span>
+              )}
             </div>
 
             {nearbyEmployees.length === 0 ? (
               <div className="px-4 py-8 text-center space-y-1">
                 <div className="text-[22px]">🚌</div>
-                <div className="text-[12.5px] font-medium text-ink-500">
-                  편도 75분 이내 거주 직원 없음
-                </div>
+                <div className="text-[12.5px] font-medium text-ink-500">편도 75분 이내 거주 직원 없음</div>
               </div>
             ) : (
               <>
-                {displayed.map(({ emp, km, min }) => (
-                  <div
-                    key={emp.id}
-                    className="flex items-center gap-3 border-b border-line/60 px-4 py-2.5 last:border-0"
+                {displayed.map(({ emp, km, min }) => {
+                  const isOpen     = activeEmpId === emp.id;
+                  const empEntry   = RAW_MATRIX.employees[emp.id];
+                  const storeCoord = RAW_MATRIX.storeCoords[selected.id];
+                  const canRoute   = !!(empEntry && storeCoord && emp.address);
+
+                  return (
+                    <div key={emp.id} className="border-b border-line/60 last:border-0">
+                      {/* 행 */}
+                      <button
+                        onClick={() => canRoute && toggleEmp(emp.id)}
+                        className={cn(
+                          "flex w-full items-center gap-3 px-4 py-2.5 text-left transition",
+                          canRoute ? "hover:bg-canvas cursor-pointer" : "cursor-default",
+                          isOpen && "bg-brand-50"
+                        )}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-baseline gap-1.5 flex-wrap">
+                            <span className="text-[13px] font-semibold text-ink-900">{emp.name}</span>
+                            <span className="text-[11px] text-ink-400">{emp.grade} · {emp.orgName}</span>
+                          </div>
+                          {emp.address && (
+                            <div className="mt-0.5 truncate text-[11px] text-ink-400">
+                              {emp.address}
+                            </div>
+                          )}
+                        </div>
+                        <div className="shrink-0 text-right ml-3">
+                          <div className={cn("chip text-[11px] mb-0.5", timeChipCls(min))}>
+                            편도 약 {min}분
+                          </div>
+                          <div className="text-[10.5px] text-ink-400">{km.toFixed(1)} km</div>
+                        </div>
+                        {canRoute && (
+                          <span className="ml-1 shrink-0 text-[10px] text-ink-300">
+                            {isOpen ? "▲" : "▼"}
+                          </span>
+                        )}
+                      </button>
+
+                      {/* 경로 상세 (인라인 확장) */}
+                      {isOpen && empEntry && storeCoord && emp.address && (
+                        <RouteCard
+                          empName={emp.name}
+                          empAddress={emp.address}
+                          empLat={empEntry.lat}
+                          empLng={empEntry.lng}
+                          storeName={selected.name}
+                          storeAddress={selected.address}
+                          storeLat={storeCoord.lat}
+                          storeLng={storeCoord.lng}
+                          km={km}
+                          min={min}
+                          onClose={() => setActiveEmp(null)}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
+
+                {/* 더 보기 */}
+                {nearbyEmployees.length > displayCount && (
+                  <button
+                    onClick={() => setDisplayCount(c => c + LOAD_MORE_STEP)}
+                    className="w-full border-t border-line py-3 text-center text-[12px] font-semibold text-brand-600 hover:bg-brand-50 transition"
                   >
-                    <div className="min-w-0 flex-1">
-                      <span className="text-[13px] font-semibold text-ink-900">{emp.name}</span>
-                      <span className="ml-1.5 text-[11px] text-ink-400">
-                        {emp.grade} · {emp.orgName}
-                      </span>
-                    </div>
-                    <div className="shrink-0 text-right">
-                      <div className={cn("chip text-[11px] mb-0.5", timeChipClass(min))}>
-                        편도 약 {min}분
-                      </div>
-                      <div className="text-[10.5px] text-ink-400">{km.toFixed(1)} km</div>
-                    </div>
-                  </div>
-                ))}
-                {nearbyEmployees.length > 30 && (
-                  <div className="border-t border-line px-4 py-2.5 text-center text-[11.5px] text-ink-400">
-                    외 {(nearbyEmployees.length - 30).toLocaleString()}명 더 있음
-                  </div>
+                    더 보기 (+{LOAD_MORE_STEP}명)
+                    <span className="ml-1.5 font-normal text-ink-400">
+                      현재 {Math.min(displayCount, nearbyEmployees.length)}명 / 전체 {nearbyEmployees.length.toLocaleString()}명
+                    </span>
+                  </button>
                 )}
               </>
             )}
